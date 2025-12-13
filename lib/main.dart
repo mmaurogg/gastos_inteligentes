@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'providers/expense_provider.dart';
 import 'screens/home_screen.dart';
+import 'screens/api_key_screen.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final prefs = await SharedPreferences.getInstance();
+  final hasApiKey = prefs.containsKey('gemini_api_key');
+  runApp(MyApp(hasApiKey: hasApiKey));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final bool hasApiKey;
+  const MyApp({super.key, required this.hasApiKey});
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +26,7 @@ class MyApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
           useMaterial3: true,
         ),
-        home: const HomeScreen(),
+        home: hasApiKey ? const HomeScreen() : const ApiKeyScreen(),
       ),
     );
   }

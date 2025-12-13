@@ -1,19 +1,18 @@
 import 'dart:convert';
-import 'package:control_tienda/config/constants.dart';
+
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../models/expense.dart';
 
 class AIService {
-  // TODO: Replace with your actual API Key or use --dart-define
-  static const String _apiKey = Constants.apiKey;
+  final String _apiKey;
   late final GenerativeModel _model;
 
-  AIService() {
+  AIService(this._apiKey) {
     _model = GenerativeModel(model: 'gemini-2.5-flash', apiKey: _apiKey);
   }
 
   Future<Expense?> parseExpenseFromText(String text) async {
-    if (_apiKey != Constants.apiKey) {
+    if (_apiKey.isEmpty) {
       print('API Key is missing');
       return null;
     }

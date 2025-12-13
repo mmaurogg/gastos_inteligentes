@@ -4,6 +4,7 @@ import '../services/speech_service.dart';
 import '../services/ai_service.dart';
 import '../models/expense.dart';
 import '../providers/expense_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AddExpenseScreen extends StatefulWidget {
   const AddExpenseScreen({super.key});
@@ -14,7 +15,8 @@ class AddExpenseScreen extends StatefulWidget {
 
 class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final SpeechService _speechService = SpeechService();
-  final AIService _aiService = AIService();
+
+  AIService? _aiService;
 
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
@@ -33,6 +35,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   void _initSpeech() async {
     await _speechService.init();
+    final prefs = await SharedPreferences.getInstance();
+    final apiKey = prefs.getString('gemini_api_key');
+    if (apiKey != null) {
+      _aiService = AIService(apiKey);
+    }
     setState(() {});
   }
 
@@ -72,7 +79,19 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       _isProcessing = true;
     });
 
-    final expense = await _aiService.parseExpenseFromText(_recognizedText);
+    if (_aiService == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('API Key no configurada. Ve a configuración.'),
+        ),
+      );
+      setState(() {
+        _isProcessing = false;
+      });
+      return;
+    }
+
+    final expense = await _aiService!.parseExpenseFromText(_recognizedText);
 
     setState(() {
       _isProcessing = false;
