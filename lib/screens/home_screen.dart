@@ -24,6 +24,39 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  DateTimeRange? _selectedDateRange;
+
+  void _selectDateRange() async {
+    final DateTime now = DateTime.now();
+    final DateTimeRange? picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: now,
+      initialDateRange: _selectedDateRange,
+    );
+
+    if (picked != null && picked != _selectedDateRange) {
+      setState(() {
+        _selectedDateRange = picked;
+      });
+      if (mounted) {
+        Provider.of<ExpenseProvider>(
+          context,
+          listen: false,
+        ).setDateRange(picked);
+      }
+    }
+  }
+
+  void _clearDateRange() {
+    setState(() {
+      _selectedDateRange = null;
+    });
+    if (mounted) {
+      Provider.of<ExpenseProvider>(context, listen: false).setDateRange(null);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -31,6 +64,17 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('Control de Gastos IA'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.calendar_today),
+            onPressed: _selectDateRange,
+            tooltip: 'Filtrar por fecha',
+          ),
+          if (_selectedDateRange != null)
+            IconButton(
+              icon: const Icon(Icons.filter_alt_off),
+              onPressed: _clearDateRange,
+              tooltip: 'Limpiar filtro',
+            ),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
@@ -49,10 +93,12 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (context, provider, child) {
           return Column(
             children: [
-              _buildSummaryCard(provider.totalExpenses),
+              _buildDashboardHeader(provider.totalExpenses),
               Expanded(
                 child: provider.expenses.isEmpty
-                    ? const Center(child: Text('No hay gastos registrados.'))
+                    ? const Center(
+                        child: Text('No hay gastos en este periodo.'),
+                      )
                     : ListView.builder(
                         itemCount: provider.expenses.length,
                         itemBuilder: (context, index) {
@@ -99,26 +145,52 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSummaryCard(double total) {
+  Widget _buildDashboardHeader(double total) {
+    String dateText = 'Todos los tiempos';
+    if (_selectedDateRange != null) {
+      dateText =
+          '${DateFormat('dd/MM/yy').format(_selectedDateRange!.start)} - ${DateFormat('dd/MM/yy').format(_selectedDateRange!.end)}';
+    }
+
     return Card(
       margin: const EdgeInsets.all(16.0),
       elevation: 4,
+      color: Theme.of(context).colorScheme.primaryContainer,
       child: Padding(
         padding: const EdgeInsets.all(20.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Column(
           children: [
-            const Text(
-              'Total Gastado:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-            ),
             Text(
-              '\$${total.toStringAsFixed(0)}',
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.green,
+              dateText,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onPrimaryContainer.withValues(alpha: 0.7),
               ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Total Gastado:',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  ),
+                ),
+                Text(
+                  '\$${total.toStringAsFixed(0)}',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  ),
+                ),
+              ],
             ),
           ],
         ),

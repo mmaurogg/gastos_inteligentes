@@ -52,6 +52,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
           _recognizedText = text;
         });
       });
+
+      //_processWithAI();
     }
   }
 
