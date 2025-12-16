@@ -10,7 +10,7 @@
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
 
     <application
-        android:label="control_tienda"
+        android:label="Gastos Inteligentes"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
