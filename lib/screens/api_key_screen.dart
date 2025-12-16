@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'home_screen.dart';
 
 class ApiKeyScreen extends StatefulWidget {
@@ -12,6 +13,17 @@ class ApiKeyScreen extends StatefulWidget {
 class _ApiKeyScreenState extends State<ApiKeyScreen> {
   final _apiKeyController = TextEditingController();
   bool _isLoading = false;
+
+  Future<void> _launchURL() async {
+    final Uri url = Uri.parse('http://aistudio.google.com/api-keys');
+    if (!await launchUrl(url)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo abrir el enlace')),
+        );
+      }
+    }
+  }
 
   Future<void> _saveApiKey() async {
     final apiKey = _apiKeyController.text.trim();
@@ -58,7 +70,7 @@ class _ApiKeyScreenState extends State<ApiKeyScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Configuración')),
+      appBar: AppBar(title: const Text('Configura tu app')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -73,6 +85,17 @@ class _ApiKeyScreenState extends State<ApiKeyScreen> {
               'Para usar esta aplicación, necesitas una API Key de Google Gemini. '
               'Esta se guardará localmente en tu dispositivo.',
               textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 10),
+            TextButton(
+              onPressed: _launchURL,
+              child: const Text(
+                'Obtener API Key aquí',
+                style: TextStyle(
+                  decoration: TextDecoration.underline,
+                  fontSize: 16,
+                ),
+              ),
             ),
             const SizedBox(height: 30),
             TextField(
