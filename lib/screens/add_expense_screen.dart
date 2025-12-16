@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gastos_inteligentes/screens/widgets/expandible_button.dart';
 import 'package:provider/provider.dart';
 import '../services/speech_service.dart';
 import '../services/ai_service.dart';
@@ -134,14 +135,53 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Agregar Gasto')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Form Fields
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Nombre del Producto',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.shopping_bag),
+                    ),
+                    validator: (value) => value!.isEmpty ? 'Requerido' : null,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _categoryController,
+                    decoration: const InputDecoration(
+                      labelText: 'Categoría',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.category),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _amountController,
+                    decoration: const InputDecoration(
+                      labelText: 'Valor',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.attach_money),
+                    ),
+                    keyboardType: TextInputType.number,
+                    validator: (value) => value!.isEmpty ? 'Requerido' : null,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          Column(
             children: [
-              // Voice Input Section
+              const Spacer(),
               Card(
                 color: Colors.grey[100],
                 child: Padding(
@@ -150,33 +190,19 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                     children: [
                       Text(
                         _recognizedText,
-                        style: const TextStyle(fontSize: 16),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.black,
+                        ),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          FloatingActionButton(
-                            onPressed: _toggleListening,
-                            backgroundColor: _isListening
-                                ? Colors.red
-                                : Colors.blue,
-                            child: Icon(_isListening ? Icons.stop : Icons.mic),
-                          ),
-                          const SizedBox(width: 20),
-                          ElevatedButton.icon(
-                            onPressed: _isProcessing ? null : _processWithAI,
-                            icon: _isProcessing
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Icon(Icons.auto_awesome),
-                            label: const Text('Procesar con IA'),
+                          ElevatedButton(
+                            onPressed: _processWithAI,
+                            child: const Text('Procesar con IA'),
                           ),
                         ],
                       ),
@@ -184,53 +210,69 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
-
-              // Form Fields
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Nombre del Producto',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.shopping_bag),
-                ),
-                validator: (value) => value!.isEmpty ? 'Requerido' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _categoryController,
-                decoration: const InputDecoration(
-                  labelText: 'Categoría',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.category),
-                ),
-                validator: (value) => value!.isEmpty ? 'Requerido' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _amountController,
-                decoration: const InputDecoration(
-                  labelText: 'Valor',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.attach_money),
-                ),
-                keyboardType: TextInputType.number,
-                validator: (value) => value!.isEmpty ? 'Requerido' : null,
-              ),
-              const SizedBox(height: 32),
-
-              ElevatedButton(
+            ],
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _toggleListening,
+        backgroundColor: _isListening
+            ? Colors.red
+            : Theme.of(context).colorScheme.primary,
+        foregroundColor: _isListening
+            ? Colors.white
+            : Theme.of(context).colorScheme.onPrimary,
+        child: Icon(_isListening ? Icons.stop : Icons.mic),
+      ),
+      bottomNavigationBar: BottomAppBar(
+        child: Row(
+          children: [
+            Expanded(
+              child: ElevatedButton(
                 onPressed: _saveExpense,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   textStyle: const TextStyle(fontSize: 18),
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
                 ),
                 child: const Text('Guardar Gasto'),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
+
+      /* floatingActionButton: ExpandableFab(
+        distance: 112.0,
+        children: [
+          ActionButton(
+            onPressed: _toggleListening,
+            icon: Icon(_isListening ? Icons.stop : Icons.mic),
+            backgroundColor: _isListening ? Colors.red : Colors.blue,
+          ),
+          ActionButton(
+            onPressed: _isProcessing ? () {} : _processWithAI,
+            icon: _isProcessing
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
+                : const Icon(Icons.auto_awesome),
+            backgroundColor: Colors.purple,
+          ),
+          ActionButton(
+            onPressed: _saveExpense,
+            icon: const Icon(Icons.save),
+            backgroundColor: Colors.green,
+          ),
+        ],
+      ),
+    */
     );
   }
 }
