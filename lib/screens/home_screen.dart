@@ -5,6 +5,8 @@ import '../providers/expense_provider.dart';
 import '../models/expense.dart';
 import 'add_expense_screen.dart';
 import 'permissions_screen.dart';
+import 'api_key_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -58,6 +60,16 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('gemini_api_key');
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const ApiKeyScreen()),
+      (route) => false,
+    );
+  }
+
   List<dynamic> _groupExpensesByMonth(List<Expense> expenses) {
     List<dynamic> groupedList = [];
     String? lastMonth;
@@ -91,6 +103,11 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             },
             tooltip: 'Permisos',
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _logout,
+            tooltip: 'Cerrar Sesión',
           ),
         ],
       ),

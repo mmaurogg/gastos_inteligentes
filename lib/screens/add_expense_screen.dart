@@ -31,6 +31,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   double _cardBottomPosition = 0.0;
   bool _isCardVisible = true;
 
+  Widget? resultMessage;
+
   @override
   void initState() {
     super.initState();
@@ -71,18 +73,24 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       setState(() {
         _isListening = false;
       });
-
-      _processWithAI();
     }
+
+    _processWithAI();
   }
 
   void _processWithAI() async {
     if (_recognizedText.isEmpty ||
         _recognizedText == "Presiona el micrófono para hablar...") {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Por favor graba o escribe algo primero.'),
-        ),
+      resultMessage = Column(
+        children: [
+          const Text("Por favor graba o escribe algo primero."),
+          ElevatedButton(
+            onPressed: () {
+              _processWithAI();
+            },
+            child: const Text("Reintentar procesar con IA"),
+          ),
+        ],
       );
       return;
     }
@@ -92,11 +100,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     });
 
     if (_aiService == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('API Key no configurada. Ve a configuración.'),
-        ),
-      );
+      resultMessage = const Text('API Key no configurada. Ve a configuración.');
       setState(() {
         _isProcessing = false;
       });
@@ -116,14 +120,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       _categoryController.text = expense.category;
       _amountController.text = expense.amount.toStringAsFixed(0);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Datos extraídos con éxito!')),
-      );
+      resultMessage = const Text('Datos extraídos con éxito!');
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Error al procesar con IA. Verifica tu API Key.'),
-        ),
+      resultMessage = const Text(
+        'Error al procesar con IA. Verifica tu API Key.',
       );
     }
   }
@@ -205,6 +205,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                           validator: (value) =>
                               value!.isEmpty ? 'Requerido' : null,
                         ),
+                        const SizedBox(height: 16),
+
+                        if (resultMessage != null)
+                          Center(child: resultMessage!),
                       ],
                     ),
                   ),
