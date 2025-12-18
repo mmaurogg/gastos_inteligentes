@@ -16,10 +16,15 @@ class SpeechService {
     if (_isAvailable) {
       await _speech.listen(
         onResult: (result) {
-          print('Speech result: ${result.recognizedWords}');
-          onResult(result.recognizedWords);
+          if (result.finalResult) {
+            onResult(result.recognizedWords);
+          }
         },
         localeId: 'es_ES', // Default to Spanish as requested
+        listenFor: const Duration(minutes: 1), // permitir dictado largo
+        pauseFor: const Duration(
+          seconds: 2,
+        ), // espera 2s de silencio antes de finalizar
       );
     } else {
       print("Speech recognition not available");

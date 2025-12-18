@@ -32,7 +32,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   double _cardBottomPosition = 0.0;
   bool _isCardVisible = true;
 
-  String? resultMessage;
+  String? alertMessage;
 
   @override
   void initState() {
@@ -62,15 +62,14 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       _isCardVisible = true;
     });
     await _speechService.startListening((text) {
-      setState(() {
-        _recognizedTextAI = text;
-      });
+      _recognizedTextAI = text;
     });
   }
 
   void _stopRecording() async {
     if (_isListening) {
       await _speechService.stopListening();
+      await Future.delayed(const Duration(seconds: 1));
       setState(() {
         _isListening = false;
         textToShow = _recognizedTextAI!;
@@ -79,11 +78,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   }
 
   void _processWithAI() async {
-    if (_recognizedTextAI == null ||
-        _recognizedTextAI!.isEmpty ||
-        _recognizedTextAI == "Presiona el micrófono para hablar...") {
+    if (_isListening) return;
+
+    if (_recognizedTextAI == null || _recognizedTextAI!.isEmpty) {
       setState(() {
-        resultMessage = "Por favor graba o escribe algo primero.";
+        alertMessage = "Por favor graba o escribe algo primero.";
       });
       return;
     }
@@ -95,7 +94,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     if (_aiService == null) {
       setState(() {
         _isProcessing = false;
-        resultMessage = "API Key no configurada. Ve a configuración.";
+        alertMessage = "API Key no configurada. Ve a configuración.";
       });
       return;
     }
@@ -114,11 +113,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       _amountController.text = expense.amount.toStringAsFixed(0);
 
       setState(() {
-        resultMessage = "Datos extraídos con éxito!";
+        alertMessage = "Datos extraídos con éxito!";
       });
     } else {
       setState(() {
-        resultMessage = "Error al procesar con IA. Verifica tu API Key.";
+        alertMessage = "Error al procesar con IA. Verifica tu API Key.";
       });
     }
   }
@@ -231,9 +230,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
-                                if (resultMessage != null)
+                                if (alertMessage != null)
                                   Expanded(
-                                    child: Center(child: Text(resultMessage!)),
+                                    child: Center(child: Text(alertMessage!)),
                                   ),
                                 IconButton(
                                   icon: const Icon(Icons.close, size: 20),
