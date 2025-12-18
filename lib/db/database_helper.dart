@@ -45,6 +45,16 @@ class DatabaseHelper {
     );
   }
 
+  Future<int> updateExpense(Expense expense) async {
+    Database db = await database;
+    return await db.update(
+      'expenses',
+      expense.toMap(),
+      where: 'id = ?',
+      whereArgs: [expense.id],
+    );
+  }
+
   Future<List<Expense>> getExpenses() async {
     Database db = await database;
     final List<Map<String, dynamic>> maps = await db.query(

@@ -42,6 +42,11 @@ class ExpenseProvider with ChangeNotifier {
     await loadExpenses();
   }
 
+  Future<void> updateExpense(Expense expense) async {
+    await _dbHelper.updateExpense(expense);
+    await loadExpenses();
+  }
+
   Future<void> deleteExpense(int id) async {
     await _dbHelper.deleteExpense(id);
     await loadExpenses();

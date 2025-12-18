@@ -101,6 +101,16 @@ class _HomeScreenState extends State<HomeScreen> {
                               provider.deleteExpense(expense.id!);
                             },
                             child: ListTile(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => AddExpenseScreen(
+                                      expenseToEdit: expense,
+                                    ),
+                                  ),
+                                );
+                              },
                               leading: CircleAvatar(
                                 child: expense.category.isNotEmpty
                                     ? Text(expense.category[0].toUpperCase())

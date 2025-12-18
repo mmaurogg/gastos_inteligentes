@@ -7,7 +7,9 @@ import '../providers/expense_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AddExpenseScreen extends StatefulWidget {
-  const AddExpenseScreen({super.key});
+  final Expense? expenseToEdit;
+
+  const AddExpenseScreen({super.key, this.expenseToEdit});
 
   @override
   State<AddExpenseScreen> createState() => _AddExpenseScreenState();
@@ -33,6 +35,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   void initState() {
     super.initState();
     _initSpeech();
+    if (widget.expenseToEdit != null) {
+      _nameController.text = widget.expenseToEdit!.name;
+      _categoryController.text = widget.expenseToEdit!.category;
+      _amountController.text = widget.expenseToEdit!.amount.toStringAsFixed(0);
+    }
   }
 
   void _initSpeech() async {
@@ -124,13 +131,24 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   void _saveExpense() {
     if (_formKey.currentState!.validate()) {
       final expense = Expense(
+        id: widget.expenseToEdit?.id,
         name: _nameController.text,
         category: _categoryController.text,
         amount: double.parse(_amountController.text),
-        date: DateTime.now(),
+        date: widget.expenseToEdit?.date ?? DateTime.now(),
       );
 
-      Provider.of<ExpenseProvider>(context, listen: false).addExpense(expense);
+      if (widget.expenseToEdit != null) {
+        Provider.of<ExpenseProvider>(
+          context,
+          listen: false,
+        ).updateExpense(expense);
+      } else {
+        Provider.of<ExpenseProvider>(
+          context,
+          listen: false,
+        ).addExpense(expense);
+      }
       Navigator.pop(context);
     }
   }
@@ -138,7 +156,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Agregar Gasto')),
+      appBar: AppBar(
+        title: Text(
+          widget.expenseToEdit != null ? 'Editar Gasto' : 'Agregar Gasto',
+        ),
+      ),
       body: Column(
         children: [
           Expanded(
@@ -282,7 +304,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                   backgroundColor: Theme.of(context).colorScheme.primary,
                   foregroundColor: Theme.of(context).colorScheme.onPrimary,
                 ),
-                child: const Text('Guardar Gasto'),
+                child: Text(
+                  widget.expenseToEdit != null
+                      ? 'Actualizar Gasto'
+                      : 'Guardar Gasto',
+                ),
               ),
             ),
           ],
