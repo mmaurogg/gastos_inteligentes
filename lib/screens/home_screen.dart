@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/expense_provider.dart';
+import '../models/expense.dart';
 import 'add_expense_screen.dart';
 import 'permissions_screen.dart';
 
@@ -57,6 +58,21 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  List<dynamic> _groupExpensesByMonth(List<Expense> expenses) {
+    List<dynamic> groupedList = [];
+    String? lastMonth;
+
+    for (var expense in expenses) {
+      String month = DateFormat('MMMM yyyy').format(expense.date);
+      if (month != lastMonth) {
+        groupedList.add(month);
+        lastMonth = month;
+      }
+      groupedList.add(expense);
+    }
+    return groupedList;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -85,53 +101,86 @@ class _HomeScreenState extends State<HomeScreen> {
               _buildFilterBar(),
 
               _buildDashboardHeader(provider.totalExpenses),
+
               Expanded(
                 child: provider.expenses.isEmpty
                     ? const Center(
                         child: Text('No hay gastos en este periodo.'),
                       )
-                    : ListView.builder(
-                        itemCount: provider.expenses.length,
-                        itemBuilder: (context, index) {
-                          final expense = provider.expenses[index];
-                          return Dismissible(
-                            key: Key(expense.id.toString()),
-                            background: Container(color: Colors.red),
-                            onDismissed: (direction) {
-                              provider.deleteExpense(expense.id!);
-                            },
-                            child: ListTile(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => AddExpenseScreen(
-                                      expenseToEdit: expense,
+                    : Builder(
+                        builder: (context) {
+                          final groupedExpenses = _groupExpensesByMonth(
+                            provider.expenses,
+                          );
+                          return ListView.builder(
+                            itemCount: groupedExpenses.length,
+                            itemBuilder: (context, index) {
+                              final item = groupedExpenses[index];
+                              if (item is String) {
+                                return Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    16,
+                                    16,
+                                    8,
+                                  ),
+                                  child: Text(
+                                    item.toUpperCase(),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
                                     ),
                                   ),
                                 );
-                              },
-                              leading: CircleAvatar(
-                                child: expense.category.isNotEmpty
-                                    ? Text(expense.category[0].toUpperCase())
-                                    : const Icon(Icons.category),
-                              ),
-                              title: Text(expense.name),
-                              subtitle: Text(
-                                DateFormat('dd/MM/yyyy').format(expense.date),
-                              ),
-                              trailing: Text(
-                                NumberFormat.currency(
-                                  locale: 'en_US',
-                                  symbol: '\$',
-                                  decimalDigits: 0,
-                                ).format(expense.amount),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                              }
+                              final expense = item as Expense;
+                              return Dismissible(
+                                key: Key(expense.id.toString()),
+                                background: Container(color: Colors.red),
+                                onDismissed: (direction) {
+                                  provider.deleteExpense(expense.id!);
+                                },
+                                child: ListTile(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => AddExpenseScreen(
+                                          expenseToEdit: expense,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  leading: CircleAvatar(
+                                    child: expense.category.isNotEmpty
+                                        ? Text(
+                                            expense.category[0].toUpperCase(),
+                                          )
+                                        : const Icon(Icons.category),
+                                  ),
+                                  title: Text(expense.name),
+                                  subtitle: Text(
+                                    DateFormat(
+                                      'dd/MM/yyyy',
+                                    ).format(expense.date),
+                                  ),
+                                  trailing: Text(
+                                    NumberFormat.currency(
+                                      locale: 'en_US',
+                                      symbol: '\$',
+                                      decimalDigits: 0,
+                                    ).format(expense.amount),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
+                              );
+                            },
                           );
                         },
                       ),
