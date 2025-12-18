@@ -25,13 +25,14 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final _categoryController = TextEditingController();
   final _amountController = TextEditingController();
 
-  String _recognizedText = "Presiona el micrófono para hablar...";
+  String textToShow = "Presiona el micrófono para hablar...";
+  String? _recognizedTextAI;
   bool _isListening = false;
   bool _isProcessing = false;
   double _cardBottomPosition = 0.0;
   bool _isCardVisible = true;
 
-  Widget? resultMessage;
+  String? resultMessage;
 
   @override
   void initState() {
@@ -57,12 +58,12 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   void _startRecording() async {
     setState(() {
       _isListening = true;
-      _recognizedText = "";
+      _recognizedTextAI = "";
       _isCardVisible = true;
     });
     await _speechService.startListening((text) {
       setState(() {
-        _recognizedText = text;
+        _recognizedTextAI = text;
       });
     });
   }
@@ -72,26 +73,18 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       await _speechService.stopListening();
       setState(() {
         _isListening = false;
+        textToShow = _recognizedTextAI!;
       });
     }
-
-    _processWithAI();
   }
 
   void _processWithAI() async {
-    if (_recognizedText.isEmpty ||
-        _recognizedText == "Presiona el micrófono para hablar...") {
-      resultMessage = Column(
-        children: [
-          const Text("Por favor graba o escribe algo primero."),
-          ElevatedButton(
-            onPressed: () {
-              _processWithAI();
-            },
-            child: const Text("Reintentar procesar con IA"),
-          ),
-        ],
-      );
+    if (_recognizedTextAI == null ||
+        _recognizedTextAI!.isEmpty ||
+        _recognizedTextAI == "Presiona el micrófono para hablar...") {
+      setState(() {
+        resultMessage = "Por favor graba o escribe algo primero.";
+      });
       return;
     }
 
@@ -100,14 +93,14 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     });
 
     if (_aiService == null) {
-      resultMessage = const Text('API Key no configurada. Ve a configuración.');
       setState(() {
         _isProcessing = false;
+        resultMessage = "API Key no configurada. Ve a configuración.";
       });
       return;
     }
 
-    final expense = await _aiService!.parseExpenseFromText(_recognizedText);
+    final expense = await _aiService!.parseExpenseFromText(_recognizedTextAI!);
 
     setState(() {
       _isProcessing = false;
@@ -120,11 +113,13 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       _categoryController.text = expense.category;
       _amountController.text = expense.amount.toStringAsFixed(0);
 
-      resultMessage = const Text('Datos extraídos con éxito!');
+      setState(() {
+        resultMessage = "Datos extraídos con éxito!";
+      });
     } else {
-      resultMessage = const Text(
-        'Error al procesar con IA. Verifica tu API Key.',
-      );
+      setState(() {
+        resultMessage = "Error al procesar con IA. Verifica tu API Key.";
+      });
     }
   }
 
@@ -206,9 +201,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                               value!.isEmpty ? 'Requerido' : null,
                         ),
                         const SizedBox(height: 16),
-
-                        if (resultMessage != null)
-                          Center(child: resultMessage!),
                       ],
                     ),
                   ),
@@ -239,6 +231,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
+                                if (resultMessage != null)
+                                  Expanded(
+                                    child: Center(child: Text(resultMessage!)),
+                                  ),
                                 IconButton(
                                   icon: const Icon(Icons.close, size: 20),
                                   onPressed: () {
@@ -256,7 +252,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                 bottom: 16.0,
                               ),
                               child: Text(
-                                _recognizedText,
+                                textToShow,
                                 style: const TextStyle(
                                   fontSize: 16,
                                   color: Colors.black,
@@ -274,46 +270,71 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
           ),
         ],
       ),
-      floatingActionButton: _isProcessing
-          ? FloatingActionButton(
-              onPressed: null,
-              child: const CircularProgressIndicator(),
-            )
-          : GestureDetector(
+
+      bottomNavigationBar: Container(
+        height: 180,
+        padding: const EdgeInsets.only(bottom: 50),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Bottom Left: Voice Record
+            GestureDetector(
               onTapDown: (_) => _startRecording(),
               onTapUp: (_) => _stopRecording(),
               onTapCancel: () => _stopRecording(),
-              child: FloatingActionButton(
-                onPressed: () {
-                  // Empty to prevent default tap behavior interfering
-                },
+              child: CircleAvatar(
+                radius: 50,
                 backgroundColor: _isListening
                     ? Colors.red
                     : Theme.of(context).colorScheme.primary,
-                foregroundColor: _isListening
-                    ? Colors.white
-                    : Theme.of(context).colorScheme.onPrimary,
-                child: Icon(_isListening ? Icons.mic : Icons.mic_none),
+                child: Icon(
+                  _isListening ? Icons.mic : Icons.mic_none,
+                  color: Colors.white,
+                  size: 30,
+                ),
               ),
             ),
-      bottomNavigationBar: BottomAppBar(
-        child: Row(
-          children: [
-            Expanded(
-              child: ElevatedButton(
-                onPressed: _saveExpense,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  textStyle: const TextStyle(fontSize: 18),
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+            Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    // Bottom Left: Voice Record
+
+                    // Top Button: Save
+                    CircleAvatar(
+                      radius: 30,
+                      backgroundColor: Theme.of(context).colorScheme.secondary,
+                      child: IconButton(
+                        onPressed: _saveExpense,
+                        icon: const Icon(Icons.save, color: Colors.white),
+                      ),
+                    ),
+                    const SizedBox(width: 40),
+                    // Bottom Right: AI Process
+                    _isProcessing
+                        ? CircleAvatar(
+                            radius: 30,
+                            child: CircularProgressIndicator(
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          )
+                        : CircleAvatar(
+                            radius: 30,
+                            backgroundColor: Colors.purple,
+                            child: IconButton(
+                              onPressed: _processWithAI,
+                              icon: const Icon(
+                                Icons.auto_awesome,
+                                color: Colors.white,
+                                size: 30,
+                              ),
+                            ),
+                          ),
+                  ],
                 ),
-                child: Text(
-                  widget.expenseToEdit != null
-                      ? 'Actualizar Gasto'
-                      : 'Guardar Gasto',
-                ),
-              ),
+              ],
             ),
           ],
         ),
