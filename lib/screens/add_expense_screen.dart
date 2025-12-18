@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:gastos_inteligentes/screens/widgets/expandible_button.dart';
 import 'package:provider/provider.dart';
 import '../services/speech_service.dart';
 import '../services/ai_service.dart';
@@ -27,6 +26,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   String _recognizedText = "Presiona el micrófono para hablar...";
   bool _isListening = false;
   bool _isProcessing = false;
+  double _cardBottomPosition = 0.0;
+  bool _isCardVisible = true;
 
   @override
   void initState() {
@@ -44,24 +45,27 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     setState(() {});
   }
 
-  void _toggleListening() async {
+  void _startRecording() async {
+    setState(() {
+      _isListening = true;
+      _recognizedText = "";
+      _isCardVisible = true;
+    });
+    await _speechService.startListening((text) {
+      setState(() {
+        _recognizedText = text;
+      });
+    });
+  }
+
+  void _stopRecording() async {
     if (_isListening) {
       await _speechService.stopListening();
       setState(() {
         _isListening = false;
       });
-    } else {
-      setState(() {
-        _isListening = true;
-        _recognizedText = "";
-      });
-      await _speechService.startListening((text) {
-        setState(() {
-          _recognizedText = text;
-        });
-      });
 
-      //_processWithAI();
+      _processWithAI();
     }
   }
 
@@ -135,95 +139,137 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Agregar Gasto')),
-      body: Stack(
+      body: Column(
         children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Form Fields
-                  TextFormField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Nombre del Producto',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.shopping_bag),
-                    ),
-                    validator: (value) => value!.isEmpty ? 'Requerido' : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _categoryController,
-                    decoration: const InputDecoration(
-                      labelText: 'Categoría',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.category),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _amountController,
-                    decoration: const InputDecoration(
-                      labelText: 'Valor',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.attach_money),
-                    ),
-                    keyboardType: TextInputType.number,
-                    validator: (value) => value!.isEmpty ? 'Requerido' : null,
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          Column(
-            children: [
-              const Spacer(),
-              Card(
-                color: Colors.grey[100],
-                child: Padding(
+          Expanded(
+            child: Stack(
+              children: [
+                SingleChildScrollView(
                   padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      Text(
-                        _recognizedText,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: Colors.black,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          ElevatedButton(
-                            onPressed: _processWithAI,
-                            child: const Text('Procesar con IA'),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Form Fields
+                        TextFormField(
+                          controller: _nameController,
+                          decoration: const InputDecoration(
+                            labelText: 'Nombre del Producto',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.shopping_bag),
                           ),
-                        ],
-                      ),
-                    ],
+                          validator: (value) =>
+                              value!.isEmpty ? 'Requerido' : null,
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _categoryController,
+                          decoration: const InputDecoration(
+                            labelText: 'Categoría',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.category),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _amountController,
+                          decoration: const InputDecoration(
+                            labelText: 'Valor',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.attach_money),
+                          ),
+                          keyboardType: TextInputType.number,
+                          validator: (value) =>
+                              value!.isEmpty ? 'Requerido' : null,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+
+                if (_isCardVisible)
+                  Positioned(
+                    bottom: _cardBottomPosition,
+                    left: 16,
+                    right: 16,
+                    child: GestureDetector(
+                      onVerticalDragUpdate: (details) {
+                        setState(() {
+                          _cardBottomPosition -= details.delta.dy;
+                          // Clamp to screen bounds (approximate)
+                          if (_cardBottomPosition < 0) _cardBottomPosition = 0;
+                          if (_cardBottomPosition >
+                              MediaQuery.of(context).size.height - 300) {
+                            _cardBottomPosition =
+                                MediaQuery.of(context).size.height - 300;
+                          }
+                        });
+                      },
+                      child: Card(
+                        color: Colors.grey[100],
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.close, size: 20),
+                                  onPressed: () {
+                                    setState(() {
+                                      _isCardVisible = false;
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                right: 16.0,
+                                left: 16.0,
+                                bottom: 16.0,
+                              ),
+                              child: Text(
+                                _recognizedText,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.black,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _toggleListening,
-        backgroundColor: _isListening
-            ? Colors.red
-            : Theme.of(context).colorScheme.primary,
-        foregroundColor: _isListening
-            ? Colors.white
-            : Theme.of(context).colorScheme.onPrimary,
-        child: Icon(_isListening ? Icons.stop : Icons.mic),
-      ),
+      floatingActionButton: _isProcessing
+          ? FloatingActionButton(
+              onPressed: null,
+              child: const CircularProgressIndicator(),
+            )
+          : GestureDetector(
+              onTapDown: (_) => _startRecording(),
+              onTapUp: (_) => _stopRecording(),
+              onTapCancel: () => _stopRecording(),
+              child: FloatingActionButton(
+                onPressed: () {
+                  // Empty to prevent default tap behavior interfering
+                },
+                backgroundColor: _isListening
+                    ? Colors.red
+                    : Theme.of(context).colorScheme.primary,
+                foregroundColor: _isListening
+                    ? Colors.white
+                    : Theme.of(context).colorScheme.onPrimary,
+                child: Icon(_isListening ? Icons.mic : Icons.mic_none),
+              ),
+            ),
       bottomNavigationBar: BottomAppBar(
         child: Row(
           children: [
@@ -242,37 +288,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
           ],
         ),
       ),
-
-      /* floatingActionButton: ExpandableFab(
-        distance: 112.0,
-        children: [
-          ActionButton(
-            onPressed: _toggleListening,
-            icon: Icon(_isListening ? Icons.stop : Icons.mic),
-            backgroundColor: _isListening ? Colors.red : Colors.blue,
-          ),
-          ActionButton(
-            onPressed: _isProcessing ? () {} : _processWithAI,
-            icon: _isProcessing
-                ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  )
-                : const Icon(Icons.auto_awesome),
-            backgroundColor: Colors.purple,
-          ),
-          ActionButton(
-            onPressed: _saveExpense,
-            icon: const Icon(Icons.save),
-            backgroundColor: Colors.green,
-          ),
-        ],
-      ),
-    */
     );
   }
 }

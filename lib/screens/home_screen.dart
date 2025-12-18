@@ -102,7 +102,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             },
                             child: ListTile(
                               leading: CircleAvatar(
-                                child: Text(expense.category[0].toUpperCase()),
+                                child: expense.category.isNotEmpty
+                                    ? Text(expense.category[0].toUpperCase())
+                                    : const Icon(Icons.category),
                               ),
                               title: Text(expense.name),
                               subtitle: Text(
