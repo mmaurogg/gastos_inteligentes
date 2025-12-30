@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../providers/expense_provider.dart';
 import '../providers/income_provider.dart';
 import '../models/expense.dart';
+import '../models/income.dart';
 import 'add_expense_screen.dart';
 import 'add_income_screen.dart';
 import 'permissions_screen.dart';
@@ -32,6 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   DateTimeRange? _selectedDateRange;
+  String _currentViewFilter = 'balance'; // 'income', 'expense', 'balance'
 
   void _selectDateRange() async {
     final DateTime now = DateTime.now();
@@ -51,6 +53,10 @@ class _HomeScreenState extends State<HomeScreen> {
           context,
           listen: false,
         ).setDateRange(picked);
+        Provider.of<IncomeProvider>(
+          context,
+          listen: false,
+        ).setDateRange(picked);
       }
     }
   }
@@ -61,6 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
     if (mounted) {
       Provider.of<ExpenseProvider>(context, listen: false).setDateRange(null);
+      Provider.of<IncomeProvider>(context, listen: false).setDateRange(null);
     }
   }
 
@@ -74,17 +81,20 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  List<dynamic> _groupExpensesByMonth(List<Expense> expenses) {
+  List<dynamic> _groupTransactionsByMonth(List<dynamic> transactions) {
     List<dynamic> groupedList = [];
     String? lastMonth;
 
-    for (var expense in expenses) {
-      String month = DateFormat('MMMM yyyy').format(expense.date);
+    // Sort transactions by date descending
+    transactions.sort((a, b) => b.date.compareTo(a.date));
+
+    for (var transaction in transactions) {
+      String month = DateFormat('MMMM yyyy').format(transaction.date);
       if (month != lastMonth) {
         groupedList.add(month);
         lastMonth = month;
       }
-      groupedList.add(expense);
+      groupedList.add(transaction);
     }
     return groupedList;
   }
@@ -127,87 +137,138 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
 
               Expanded(
-                child: expenseProvider.expenses.isEmpty
-                    ? const Center(
-                        child: Text('No hay gastos en este periodo.'),
-                      )
-                    : Builder(
-                        builder: (context) {
-                          final groupedExpenses = _groupExpensesByMonth(
-                            expenseProvider.expenses,
+                child: Builder(
+                  builder: (context) {
+                    List<dynamic> transactions = [];
+                    if (_currentViewFilter == 'income') {
+                      transactions = incomeProvider.incomes;
+                    } else if (_currentViewFilter == 'expense') {
+                      transactions = expenseProvider.expenses;
+                    } else {
+                      transactions = [
+                        ...expenseProvider.expenses,
+                        ...incomeProvider.incomes,
+                      ];
+                    }
+
+                    if (transactions.isEmpty) {
+                      return const Center(
+                        child: Text('No hay movimientos en este periodo.'),
+                      );
+                    }
+
+                    final groupedTransactions = _groupTransactionsByMonth(
+                      transactions,
+                    );
+
+                    return ListView.builder(
+                      itemCount: groupedTransactions.length,
+                      itemBuilder: (context, index) {
+                        final item = groupedTransactions[index];
+                        if (item is String) {
+                          return Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                            child: Text(
+                              item.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
                           );
-                          return ListView.builder(
-                            itemCount: groupedExpenses.length,
-                            itemBuilder: (context, index) {
-                              final item = groupedExpenses[index];
-                              if (item is String) {
-                                return Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    16,
-                                    16,
-                                    16,
-                                    8,
-                                  ),
-                                  child: Text(
-                                    item.toUpperCase(),
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
-                                    ),
-                                  ),
-                                );
-                              }
-                              final expense = item as Expense;
-                              return Dismissible(
-                                key: Key(expense.id.toString()),
-                                background: Container(color: Colors.red),
-                                onDismissed: (direction) {
-                                  expenseProvider.deleteExpense(expense.id!);
-                                },
-                                child: ListTile(
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => AddExpenseScreen(
-                                          expenseToEdit: expense,
+                        }
+
+                        final isExpense = item is Expense;
+                        final id = isExpense ? item.id : (item as Income).id;
+                        final name = isExpense
+                            ? item.name
+                            : (item as Income).name;
+                        final category = isExpense
+                            ? item.category
+                            : (item as Income).category;
+                        final date = isExpense
+                            ? item.date
+                            : (item as Income).date;
+                        final amount = isExpense
+                            ? item.amount
+                            : (item as Income).amount;
+
+                        return Dismissible(
+                          key: Key('${isExpense ? 'exp' : 'inc'}_$id'),
+                          background: Container(
+                            color: Colors.red,
+                            alignment: Alignment.centerRight,
+                            padding: const EdgeInsets.only(right: 20),
+                            child: const Icon(
+                              Icons.delete,
+                              color: Colors.white,
+                            ),
+                          ),
+                          onDismissed: (direction) {
+                            if (isExpense) {
+                              expenseProvider.deleteExpense(id!);
+                            } else {
+                              incomeProvider.deleteIncome(id!);
+                            }
+                          },
+                          child: ListTile(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => isExpense
+                                      ? AddExpenseScreen(expenseToEdit: item)
+                                      : AddIncomeScreen(
+                                          incomeToEdit: item as Income,
                                         ),
-                                      ),
-                                    );
-                                  },
-                                  leading: CircleAvatar(
-                                    child: expense.category.isNotEmpty
-                                        ? Text(
-                                            expense.category[0].toUpperCase(),
-                                          )
-                                        : const Icon(Icons.category),
-                                  ),
-                                  title: Text(expense.name),
-                                  subtitle: Text(
-                                    DateFormat(
-                                      'dd/MM/yyyy',
-                                    ).format(expense.date),
-                                  ),
-                                  trailing: Text(
-                                    NumberFormat.currency(
-                                      locale: 'en_US',
-                                      symbol: '\$',
-                                      decimalDigits: 0,
-                                    ).format(expense.amount),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                  ),
                                 ),
                               );
                             },
-                          );
-                        },
-                      ),
+                            leading: CircleAvatar(
+                              backgroundColor: isExpense
+                                  ? Theme.of(
+                                      context,
+                                    ).colorScheme.primaryContainer
+                                  : Colors.green[100],
+                              child: category.isNotEmpty
+                                  ? Text(
+                                      category[0].toUpperCase(),
+                                      style: TextStyle(
+                                        color: isExpense
+                                            ? Theme.of(
+                                                context,
+                                              ).colorScheme.primary
+                                            : Colors.green[800],
+                                      ),
+                                    )
+                                  : Icon(
+                                      Icons.category,
+                                      color: isExpense
+                                          ? Theme.of(
+                                              context,
+                                            ).colorScheme.primary
+                                          : Colors.green[800],
+                                    ),
+                            ),
+                            title: Text(name),
+                            subtitle: Text(
+                              DateFormat('dd/MM/yyyy').format(date),
+                            ),
+                            trailing: Text(
+                              '${isExpense ? '-' : ''}${NumberFormat.currency(locale: 'en_US', symbol: '\$', decimalDigits: 0).format(amount)}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: isExpense ? Colors.red : Colors.green,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
               ),
             ],
           );
@@ -264,78 +325,123 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Ingresos:',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            InkWell(
+              onTap: () => setState(() => _currentViewFilter = 'income'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 4.0),
+                decoration: BoxDecoration(
+                  color: _currentViewFilter == 'income'
+                      ? Colors.green.withOpacity(0.1)
+                      : null,
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                Text(
-                  NumberFormat.currency(
-                    locale: 'en_US',
-                    symbol: '\$',
-                    decimalDigits: 0,
-                  ).format(totalIncomes),
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green,
-                  ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Ingresos:',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      NumberFormat.currency(
+                        locale: 'en_US',
+                        symbol: '\$',
+                        decimalDigits: 0,
+                      ).format(totalIncomes),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              padding: const EdgeInsets.symmetric(vertical: 4.0),
               child: const Divider(),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Gastos:',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            InkWell(
+              onTap: () => setState(() => _currentViewFilter = 'expense'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 4.0),
+                decoration: BoxDecoration(
+                  color: _currentViewFilter == 'expense'
+                      ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                      : null,
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                Text(
-                  NumberFormat.currency(
-                    locale: 'en_US',
-                    symbol: '\$',
-                    decimalDigits: 0,
-                  ).format(totalExpenses),
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Gastos:',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      NumberFormat.currency(
+                        locale: 'en_US',
+                        symbol: '\$',
+                        decimalDigits: 0,
+                      ).format(totalExpenses),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              padding: const EdgeInsets.symmetric(vertical: 4.0),
               child: const Divider(),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Balance:',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            InkWell(
+              onTap: () => setState(() => _currentViewFilter = 'balance'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 4.0),
+                decoration: BoxDecoration(
+                  color: _currentViewFilter == 'balance'
+                      ? Colors.blue.withOpacity(0.1)
+                      : null,
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                Text(
-                  NumberFormat.currency(
-                    locale: 'en_US',
-                    symbol: '\$',
-                    decimalDigits: 0,
-                  ).format(balance),
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: balance >= 0
-                        ? Theme.of(context).colorScheme.primary
-                        : Colors.red,
-                  ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Balance:',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      NumberFormat.currency(
+                        locale: 'en_US',
+                        symbol: '\$',
+                        decimalDigits: 0,
+                      ).format(balance),
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: balance >= 0
+                            ? Theme.of(context).colorScheme.primary
+                            : Colors.red,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ],
         ),
