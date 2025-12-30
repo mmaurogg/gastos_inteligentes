@@ -13,11 +13,6 @@ class AIService {
   }
 
   Future<Expense?> parseExpenseFromText(String text) async {
-    if (_apiKey.isEmpty) {
-      print('API Key is missing');
-      return null;
-    }
-
     final prompt =
         '''
     Analiza el siguiente texto y extrae los detalles del gasto en formato JSON.
@@ -31,41 +26,20 @@ class AIService {
     Responde ÚNICAMENTE con el JSON válido, sin bloques de código markdown.
     ''';
 
-    try {
-      final content = [Content.text(prompt)];
-      final response = await _model.generateContent(content);
+    final jsonMap = await _parseFromText(prompt);
+    if (jsonMap == null) return null;
 
-      String? responseText = response.text;
-      if (responseText == null) return null;
-
-      // Clean up markdown if present (Gemini sometimes adds ```json ... ```)
-      responseText = responseText
-          .replaceAll('```json', '')
-          .replaceAll('```', '')
-          .trim();
-
-      final Map<String, dynamic> jsonMap = jsonDecode(responseText);
-
-      return Expense(
-        name: jsonMap['name'] ?? 'Desconocido',
-        category: jsonMap['category'] ?? 'Varios',
-        amount: (jsonMap['amount'] is int)
-            ? (jsonMap['amount'] as int).toDouble()
-            : (jsonMap['amount'] ?? 0.0),
-        date: DateTime.now(),
-      );
-    } catch (e) {
-      print('Error parsing expense with AI: $e');
-      return null;
-    }
+    return Expense(
+      name: jsonMap['name'] ?? 'Desconocido',
+      category: jsonMap['category'] ?? 'Varios',
+      amount: (jsonMap['amount'] is int)
+          ? (jsonMap['amount'] as int).toDouble()
+          : (jsonMap['amount'] ?? 0.0),
+      date: DateTime.now(),
+    );
   }
 
   Future<Income?> parseIncomeFromText(String text) async {
-    if (_apiKey.isEmpty) {
-      print('API Key is missing');
-      return null;
-    }
-
     final prompt =
         '''
     Analiza el siguiente texto y extrae los detalles del ingreso en formato JSON.
@@ -79,6 +53,25 @@ class AIService {
     Responde ÚNICAMENTE con el JSON válido, sin bloques de código markdown.
     ''';
 
+    final jsonMap = await _parseFromText(prompt);
+    if (jsonMap == null) return null;
+
+    return Income(
+      name: jsonMap['name'] ?? 'Desconocido',
+      category: jsonMap['category'] ?? 'Otros',
+      amount: (jsonMap['amount'] is int)
+          ? (jsonMap['amount'] as int).toDouble()
+          : (jsonMap['amount'] ?? 0.0),
+      date: DateTime.now(),
+    );
+  }
+
+  Future<Map<String, dynamic>?> _parseFromText(String prompt) async {
+    if (_apiKey.isEmpty) {
+      print('API Key is missing');
+      return null;
+    }
+
     try {
       final content = [Content.text(prompt)];
       final response = await _model.generateContent(content);
@@ -91,18 +84,9 @@ class AIService {
           .replaceAll('```', '')
           .trim();
 
-      final Map<String, dynamic> jsonMap = jsonDecode(responseText);
-
-      return Income(
-        name: jsonMap['name'] ?? 'Desconocido',
-        category: jsonMap['category'] ?? 'Otros',
-        amount: (jsonMap['amount'] is int)
-            ? (jsonMap['amount'] as int).toDouble()
-            : (jsonMap['amount'] ?? 0.0),
-        date: DateTime.now(),
-      );
+      return jsonDecode(responseText) as Map<String, dynamic>;
     } catch (e) {
-      print('Error parsing income with AI: $e');
+      print('Error parsing with AI: $e');
       return null;
     }
   }

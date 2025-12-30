@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gastos_inteligentes/screens/widgets/custom_chip_bar.dart';
 import 'package:provider/provider.dart';
 import '../services/speech_service.dart';
 import '../services/ai_service.dart';
@@ -32,6 +33,8 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
   bool _isCardVisible = true;
 
   String? alertMessage;
+
+  final List<String> _categories = ['Sueldo', 'Regalo', 'Otros'];
 
   @override
   void initState() {
@@ -121,6 +124,46 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
     }
   }
 
+  void _showAddCategoryDialog() {
+    final TextEditingController newCategoryController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Nueva etiqueta'),
+          content: TextField(
+            controller: newCategoryController,
+            decoration: const InputDecoration(
+              hintText: 'Nombre de la etiqueta',
+            ),
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final newCategory = newCategoryController.text.trim();
+                if (newCategory.isNotEmpty) {
+                  setState(() {
+                    if (!_categories.contains(newCategory)) {
+                      _categories.add(newCategory);
+                    }
+                    _categoryController.text = newCategory;
+                  });
+                  Navigator.pop(context);
+                }
+              },
+              child: const Text('Agregar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _saveIncome() {
     if (_formKey.currentState!.validate()) {
       final income = Income(
@@ -174,6 +217,18 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
                               value!.isEmpty ? 'Requerido' : null,
                         ),
                         const SizedBox(height: 16),
+                        Center(
+                          child: CustomChipBar(
+                            values: _categories,
+                            selectedValue: _categoryController.text,
+                            onSelected: (value) {
+                              setState(() {
+                                _categoryController.text = value;
+                              });
+                            },
+                            //onAdd: _showAddCategoryDialog,
+                          ),
+                        ),
                         TextFormField(
                           controller: _categoryController,
                           decoration: const InputDecoration(
