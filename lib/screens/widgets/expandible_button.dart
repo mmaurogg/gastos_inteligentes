@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 class ExpandableFab extends StatefulWidget {
   const ExpandableFab({
     super.key,
-    required this.distance,
+    this.distance = 80.0,
     required this.children,
+    this.icon = const Icon(Icons.add),
   });
 
   final double distance;
   final List<Widget> children;
+  final Icon icon;
 
   @override
   State<ExpandableFab> createState() => _ExpandableFabState();
@@ -61,7 +63,7 @@ class _ExpandableFabState extends State<ExpandableFab>
         children: [
           _buildTapToCloseFab(),
           ..._buildExpandingActionButtons(),
-          _buildTapToOpenFab(),
+          _buildTapToOpenFab(widget.icon),
         ],
       ),
     );
@@ -109,7 +111,7 @@ class _ExpandableFabState extends State<ExpandableFab>
     return children;
   }
 
-  Widget _buildTapToOpenFab() {
+  Widget _buildTapToOpenFab(Icon icon) {
     return IgnorePointer(
       ignoring: _open,
       child: AnimatedContainer(
@@ -125,10 +127,7 @@ class _ExpandableFabState extends State<ExpandableFab>
           opacity: _open ? 0.0 : 1.0,
           curve: const Interval(0.25, 1.0, curve: Curves.easeInOut),
           duration: const Duration(milliseconds: 250),
-          child: FloatingActionButton(
-            onPressed: _toggle,
-            child: const Icon(Icons.create),
-          ),
+          child: FloatingActionButton(onPressed: _toggle, child: icon),
         ),
       ),
     );

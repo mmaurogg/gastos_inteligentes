@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:gastos_inteligentes/screens/widgets/expandible_button.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/expense_provider.dart';
+import '../providers/income_provider.dart';
 import '../models/expense.dart';
 import 'add_expense_screen.dart';
+import 'add_income_screen.dart';
 import 'permissions_screen.dart';
 import 'api_key_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,6 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         Provider.of<ExpenseProvider>(context, listen: false).loadExpenses();
+        Provider.of<IncomeProvider>(context, listen: false).loadIncomes();
       }
     });
   }
@@ -111,23 +115,26 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: Consumer<ExpenseProvider>(
-        builder: (context, provider, child) {
+      body: Consumer2<ExpenseProvider, IncomeProvider>(
+        builder: (context, expenseProvider, incomeProvider, child) {
           return Column(
             children: [
               _buildFilterBar(),
 
-              _buildDashboardHeader(provider.totalExpenses),
+              _buildDashboardHeader(
+                expenseProvider.totalExpenses,
+                incomeProvider.totalIncomes,
+              ),
 
               Expanded(
-                child: provider.expenses.isEmpty
+                child: expenseProvider.expenses.isEmpty
                     ? const Center(
                         child: Text('No hay gastos en este periodo.'),
                       )
                     : Builder(
                         builder: (context) {
                           final groupedExpenses = _groupExpensesByMonth(
-                            provider.expenses,
+                            expenseProvider.expenses,
                           );
                           return ListView.builder(
                             itemCount: groupedExpenses.length,
@@ -158,7 +165,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 key: Key(expense.id.toString()),
                                 background: Container(color: Colors.red),
                                 onDismissed: (direction) {
-                                  provider.deleteExpense(expense.id!);
+                                  expenseProvider.deleteExpense(expense.id!);
                                 },
                                 child: ListTile(
                                   onTap: () {
@@ -206,47 +213,129 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const AddExpenseScreen()),
-          );
-        },
-        child: const Icon(Icons.add),
+      floatingActionButton: ExpandableFab(
+        icon: Icon(
+          Icons.monetization_on_outlined,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+        children: [
+          FloatingActionButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AddIncomeScreen(),
+                ),
+              );
+            },
+            heroTag: 'add_income',
+            backgroundColor: Colors.green[400],
+            child: const Icon(
+              Icons.account_balance_wallet,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 16),
+          FloatingActionButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AddExpenseScreen(),
+                ),
+              );
+            },
+            heroTag: 'add_expense',
+            backgroundColor: Colors.red[400],
+            child: const Icon(Icons.wallet, color: Colors.white),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildDashboardHeader(double total) {
+  Widget _buildDashboardHeader(double totalExpenses, double totalIncomes) {
+    final balance = totalIncomes - totalExpenses;
     return Card(
       margin: const EdgeInsets.all(16.0),
       elevation: 4,
       color: Theme.of(context).colorScheme.primaryContainer,
       child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
           children: [
-            Text(
-              'Total Gastado:',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Ingresos:',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+                Text(
+                  NumberFormat.currency(
+                    locale: 'en_US',
+                    symbol: '\$',
+                    decimalDigits: 0,
+                  ).format(totalIncomes),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
+                ),
+              ],
             ),
-            Text(
-              NumberFormat.currency(
-                locale: 'en_US',
-                symbol: '\$',
-                decimalDigits: 0,
-              ).format(total),
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
-              ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: const Divider(),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Gastos:',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+                Text(
+                  NumberFormat.currency(
+                    locale: 'en_US',
+                    symbol: '\$',
+                    decimalDigits: 0,
+                  ).format(totalExpenses),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: const Divider(),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Balance:',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  NumberFormat.currency(
+                    locale: 'en_US',
+                    symbol: '\$',
+                    decimalDigits: 0,
+                  ).format(balance),
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: balance >= 0
+                        ? Theme.of(context).colorScheme.primary
+                        : Colors.red,
+                  ),
+                ),
+              ],
             ),
           ],
         ),

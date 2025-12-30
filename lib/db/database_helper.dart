@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import '../models/expense.dart';
+import '../models/income.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -27,6 +28,15 @@ class DatabaseHelper {
   Future<void> _onCreate(Database db, int version) async {
     await db.execute('''
       CREATE TABLE expenses(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        category TEXT,
+        amount REAL,
+        date TEXT
+      )
+      ''');
+    await db.execute('''
+      CREATE TABLE incomes(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT,
         category TEXT,
@@ -76,6 +86,54 @@ class DatabaseHelper {
     Database db = await database;
     final result = await db.rawQuery(
       'SELECT SUM(amount) as total FROM expenses',
+    );
+    if (result.isNotEmpty && result.first['total'] != null) {
+      return result.first['total'] as double;
+    }
+    return 0.0;
+  }
+
+  // Income Methods
+  Future<int> insertIncome(Income income) async {
+    Database db = await database;
+    return await db.insert(
+      'incomes',
+      income.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<int> updateIncome(Income income) async {
+    Database db = await database;
+    return await db.update(
+      'incomes',
+      income.toMap(),
+      where: 'id = ?',
+      whereArgs: [income.id],
+    );
+  }
+
+  Future<List<Income>> getIncomes() async {
+    Database db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'incomes',
+      orderBy: "date DESC",
+    );
+
+    return List.generate(maps.length, (i) {
+      return Income.fromMap(maps[i]);
+    });
+  }
+
+  Future<void> deleteIncome(int id) async {
+    Database db = await database;
+    await db.delete('incomes', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<double> getTotalIncomes() async {
+    Database db = await database;
+    final result = await db.rawQuery(
+      'SELECT SUM(amount) as total FROM incomes',
     );
     if (result.isNotEmpty && result.first['total'] != null) {
       return result.first['total'] as double;

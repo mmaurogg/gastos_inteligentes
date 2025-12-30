@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'providers/expense_provider.dart';
+import 'providers/income_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/api_key_screen.dart';
 
@@ -19,7 +20,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
-      providers: [ChangeNotifierProvider(create: (_) => ExpenseProvider())],
+      providers: [
+        ChangeNotifierProvider(create: (_) => ExpenseProvider()),
+        ChangeNotifierProvider(create: (_) => IncomeProvider()),
+      ],
       child: MaterialApp(
         title: 'Gastos Inteligentes',
         theme: ThemeData(
