@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../services/speech_service.dart';
 import '../services/ai_service.dart';
 import '../models/expense.dart';
 import '../providers/expense_provider.dart';
+import '../utils/formatters.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AddExpenseScreen extends StatefulWidget {
@@ -24,6 +27,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final _nameController = TextEditingController();
   final _categoryController = TextEditingController();
   final _amountController = TextEditingController();
+  final _dateController = TextEditingController();
+
+  DateTime _selectedDate = DateTime.now();
 
   String textToShow = "Presiona el micrófono para hablar...";
   String? _recognizedTextAI;
@@ -41,8 +47,12 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     if (widget.expenseToEdit != null) {
       _nameController.text = widget.expenseToEdit!.name;
       _categoryController.text = widget.expenseToEdit!.category;
-      _amountController.text = widget.expenseToEdit!.amount.toStringAsFixed(0);
+      _selectedDate = widget.expenseToEdit!.date;
+      _amountController.text = NumberFormat.decimalPattern(
+        'en_US',
+      ).format(widget.expenseToEdit!.amount);
     }
+    _dateController.text = DateFormat('dd/MM/yyyy').format(_selectedDate);
   }
 
   void _initSpeech() async {
@@ -110,7 +120,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     if (expense != null) {
       _nameController.text = expense.name;
       _categoryController.text = expense.category;
-      _amountController.text = expense.amount.toStringAsFixed(0);
+      _amountController.text = NumberFormat.decimalPattern(
+        'en_US',
+      ).format(expense.amount);
 
       setState(() {
         alertMessage = "Datos extraídos con éxito!";
@@ -124,12 +136,14 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   void _saveExpense() {
     if (_formKey.currentState!.validate()) {
+      // Remove commas before parsing
+      final amountText = _amountController.text.replaceAll(',', '');
       final expense = Expense(
         id: widget.expenseToEdit?.id,
         name: _nameController.text,
         category: _categoryController.text,
-        amount: double.parse(_amountController.text),
-        date: widget.expenseToEdit?.date ?? DateTime.now(),
+        amount: double.parse(amountText),
+        date: _selectedDate,
       );
 
       if (widget.expenseToEdit != null) {
@@ -144,6 +158,21 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         ).addExpense(expense);
       }
       Navigator.pop(context);
+    }
+  }
+
+  Future<void> _selectDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+        _dateController.text = DateFormat('dd/MM/yyyy').format(_selectedDate);
+      });
     }
   }
 
@@ -196,8 +225,23 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                             prefixIcon: Icon(Icons.attach_money),
                           ),
                           keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            ThousandsSeparatorInputFormatter(),
+                          ],
                           validator: (value) =>
                               value!.isEmpty ? 'Requerido' : null,
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _dateController,
+                          readOnly: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Fecha',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.calendar_today),
+                          ),
+                          onTap: _selectDate,
                         ),
                         const SizedBox(height: 16),
                       ],

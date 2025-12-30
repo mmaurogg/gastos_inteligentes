@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:gastos_inteligentes/screens/widgets/custom_chip_bar.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../services/speech_service.dart';
 import '../services/ai_service.dart';
 import '../models/income.dart';
 import '../providers/income_provider.dart';
+import '../utils/formatters.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:gastos_inteligentes/screens/widgets/custom_chip_bar.dart';
 
 class AddIncomeScreen extends StatefulWidget {
   final Income? incomeToEdit;
@@ -24,6 +27,9 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
   final _nameController = TextEditingController();
   final _categoryController = TextEditingController();
   final _amountController = TextEditingController();
+  final _dateController = TextEditingController();
+
+  DateTime _selectedDate = DateTime.now();
 
   String textToShow = "Presiona el micrófono para hablar...";
   String? _recognizedTextAI;
@@ -43,8 +49,12 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
     if (widget.incomeToEdit != null) {
       _nameController.text = widget.incomeToEdit!.name;
       _categoryController.text = widget.incomeToEdit!.category;
-      _amountController.text = widget.incomeToEdit!.amount.toStringAsFixed(0);
+      _selectedDate = widget.incomeToEdit!.date;
+      _amountController.text = NumberFormat.decimalPattern(
+        'en_US',
+      ).format(widget.incomeToEdit!.amount);
     }
+    _dateController.text = DateFormat('dd/MM/yyyy').format(_selectedDate);
   }
 
   void _initSpeech() async {
@@ -112,7 +122,9 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
     if (income != null) {
       _nameController.text = income.name;
       _categoryController.text = income.category;
-      _amountController.text = income.amount.toStringAsFixed(0);
+      _amountController.text = NumberFormat.decimalPattern(
+        'en_US',
+      ).format(income.amount);
 
       setState(() {
         alertMessage = "Datos extraídos con éxito!";
@@ -166,12 +178,14 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
 
   void _saveIncome() {
     if (_formKey.currentState!.validate()) {
+      // Remove commas before parsing
+      final amountText = _amountController.text.replaceAll(',', '');
       final income = Income(
         id: widget.incomeToEdit?.id,
         name: _nameController.text,
         category: _categoryController.text,
-        amount: double.parse(_amountController.text),
-        date: widget.incomeToEdit?.date ?? DateTime.now(),
+        amount: double.parse(amountText),
+        date: _selectedDate,
       );
 
       if (widget.incomeToEdit != null) {
@@ -183,6 +197,21 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
         Provider.of<IncomeProvider>(context, listen: false).addIncome(income);
       }
       Navigator.pop(context);
+    }
+  }
+
+  Future<void> _selectDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+        _dateController.text = DateFormat('dd/MM/yyyy').format(_selectedDate);
+      });
     }
   }
 
@@ -246,8 +275,23 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
                             prefixIcon: Icon(Icons.attach_money),
                           ),
                           keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            ThousandsSeparatorInputFormatter(),
+                          ],
                           validator: (value) =>
                               value!.isEmpty ? 'Requerido' : null,
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _dateController,
+                          readOnly: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Fecha',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.calendar_today),
+                          ),
+                          onTap: _selectDate,
                         ),
                         const SizedBox(height: 16),
                       ],
