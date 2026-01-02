@@ -7,19 +7,35 @@ class IncomeProvider with ChangeNotifier {
   final DatabaseHelper _dbHelper = DatabaseHelper();
 
   DateTimeRange? _selectedDateRange;
+  String? _selectedCategory;
+
+  String? get selectedCategory => _selectedCategory;
+
+  List<String> get categories {
+    return _incomes.map((e) => e.category).toSet().toList()..sort();
+  }
 
   List<Income> get incomes {
-    if (_selectedDateRange == null) {
-      return _incomes;
+    Iterable<Income> filtered = _incomes;
+
+    if (_selectedDateRange != null) {
+      filtered = filtered.where((income) {
+        return income.date.isAfter(
+              _selectedDateRange!.start.subtract(const Duration(days: 1)),
+            ) &&
+            income.date.isBefore(
+              _selectedDateRange!.end.add(const Duration(days: 1)),
+            );
+      });
     }
-    return _incomes.where((income) {
-      return income.date.isAfter(
-            _selectedDateRange!.start.subtract(const Duration(days: 1)),
-          ) &&
-          income.date.isBefore(
-            _selectedDateRange!.end.add(const Duration(days: 1)),
-          );
-    }).toList();
+
+    if (_selectedCategory != null && _selectedCategory!.isNotEmpty) {
+      filtered = filtered.where(
+        (income) => income.category == _selectedCategory,
+      );
+    }
+
+    return filtered.toList();
   }
 
   double get totalIncomes {
@@ -28,6 +44,11 @@ class IncomeProvider with ChangeNotifier {
 
   void setDateRange(DateTimeRange? range) {
     _selectedDateRange = range;
+    notifyListeners();
+  }
+
+  void setCategory(String? category) {
+    _selectedCategory = category;
     notifyListeners();
   }
 

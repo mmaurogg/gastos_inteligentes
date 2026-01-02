@@ -66,8 +66,21 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedDateRange = null;
     });
     if (mounted) {
-      Provider.of<ExpenseProvider>(context, listen: false).setDateRange(null);
-      Provider.of<IncomeProvider>(context, listen: false).setDateRange(null);
+      final expenseProvider = Provider.of<ExpenseProvider>(
+        context,
+        listen: false,
+      );
+      final incomeProvider = Provider.of<IncomeProvider>(
+        context,
+        listen: false,
+      );
+
+      expenseProvider.setDateRange(null);
+      incomeProvider.setDateRange(null);
+
+      // Also clear category when clearing filters?
+      // Or maybe keep them separate. Let's keep them separate for now but
+      // provide a way to clear category.
     }
   }
 
@@ -130,6 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
           return Column(
             children: [
               _buildFilterBar(),
+              _buildCategoryFilter(expenseProvider, incomeProvider),
 
               _buildDashboardHeader(
                 expenseProvider.totalExpenses,
@@ -485,6 +499,72 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryFilter(
+    ExpenseProvider expenseProvider,
+    IncomeProvider incomeProvider,
+  ) {
+    List<String> categories = [];
+    String? selectedCategory;
+    Function(String?) onCategorySelected;
+
+    if (_currentViewFilter == 'income') {
+      categories = incomeProvider.categories;
+      selectedCategory = incomeProvider.selectedCategory;
+      onCategorySelected = (cat) => incomeProvider.setCategory(cat);
+    } else if (_currentViewFilter == 'expense') {
+      categories = expenseProvider.categories;
+      selectedCategory = expenseProvider.selectedCategory;
+      onCategorySelected = (cat) => expenseProvider.setCategory(cat);
+    } else {
+      categories = {
+        ...expenseProvider.categories,
+        ...incomeProvider.categories,
+      }.toList()..sort();
+      selectedCategory = expenseProvider.selectedCategory;
+      onCategorySelected = (cat) {
+        expenseProvider.setCategory(cat);
+        incomeProvider.setCategory(cat);
+      };
+    }
+
+    if (categories.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      height: 50,
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        itemCount: categories.length + 1,
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: ChoiceChip(
+                label: const Text('Todas'),
+                selected: selectedCategory == null,
+                onSelected: (selected) {
+                  if (selected) onCategorySelected(null);
+                },
+              ),
+            );
+          }
+          final category = categories[index - 1];
+          return Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: ChoiceChip(
+              label: Text(category),
+              selected: selectedCategory == category,
+              onSelected: (selected) {
+                onCategorySelected(selected ? category : null);
+              },
+            ),
+          );
+        },
       ),
     );
   }
