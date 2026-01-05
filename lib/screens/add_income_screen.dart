@@ -84,6 +84,13 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
   }
 
   void _saveIncome() {
+    if (_categorysSelected.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecciona al menos una etiqueta')),
+      );
+      return;
+    }
+
     if (_formKey.currentState!.validate()) {
       // Remove commas before parsing
       final amountText = _amountController.text.replaceAll(',', '');

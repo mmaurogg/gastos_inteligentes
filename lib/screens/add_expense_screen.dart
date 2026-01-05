@@ -86,6 +86,13 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   }
 
   void _saveExpense() {
+    if (_categorysSelected.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecciona al menos una etiqueta')),
+      );
+      return;
+    }
+
     if (_formKey.currentState!.validate()) {
       // Remove commas before parsing
       final amountText = _amountController.text.replaceAll(',', '');
