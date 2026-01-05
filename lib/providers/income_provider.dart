@@ -12,7 +12,7 @@ class IncomeProvider with ChangeNotifier {
   String? get selectedCategory => _selectedCategory;
 
   List<String> get categories {
-    return _incomes.map((e) => e.category).toSet().toList()..sort();
+    return _incomes.expand((e) => e.category).toSet().toList()..sort();
   }
 
   List<Income> get incomes {
@@ -31,7 +31,7 @@ class IncomeProvider with ChangeNotifier {
 
     if (_selectedCategory != null && _selectedCategory!.isNotEmpty) {
       filtered = filtered.where(
-        (income) => income.category == _selectedCategory,
+        (income) => income.category.contains(_selectedCategory),
       );
     }
 

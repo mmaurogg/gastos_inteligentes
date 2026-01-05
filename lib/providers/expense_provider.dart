@@ -12,7 +12,7 @@ class ExpenseProvider with ChangeNotifier {
   String? get selectedCategory => _selectedCategory;
 
   List<String> get categories {
-    return _expenses.map((e) => e.category).toSet().toList()..sort();
+    return _expenses.expand((e) => e.category).toSet().toList()..sort();
   }
 
   List<Expense> get expenses {
@@ -31,7 +31,7 @@ class ExpenseProvider with ChangeNotifier {
 
     if (_selectedCategory != null && _selectedCategory!.isNotEmpty) {
       filtered = filtered.where(
-        (expense) => expense.category == _selectedCategory,
+        (expense) => expense.category.contains(_selectedCategory),
       );
     }
 

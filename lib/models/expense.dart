@@ -1,7 +1,9 @@
+import 'dart:convert';
+
 class Expense {
   final int? id;
   final String name;
-  final String category;
+  final List<String> category;
   final double amount;
   final DateTime date;
 
@@ -19,7 +21,7 @@ class Expense {
     return {
       'id': id,
       'name': name,
-      'category': category,
+      'category': jsonEncode(category),
       'amount': amount,
       'date': date.toIso8601String(),
     };
@@ -33,10 +35,25 @@ class Expense {
   }
 
   factory Expense.fromMap(Map<String, dynamic> map) {
+    List<String> categories = [];
+    if (map['category'] != null) {
+      try {
+        final decoded = jsonDecode(map['category']);
+        if (decoded is List) {
+          categories = List<String>.from(decoded);
+        } else if (decoded is String) {
+          categories = [decoded];
+        }
+      } catch (e) {
+        // Fallback for old data that might be plain strings
+        categories = [map['category'].toString()];
+      }
+    }
+
     return Expense(
       id: map['id'],
       name: map['name'],
-      category: map['category'],
+      category: categories,
       amount: map['amount'],
       date: DateTime.parse(map['date']),
     );

@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:gastos_inteligentes/screens/widgets/custom_chip_bar.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import '../services/speech_service.dart';
-import '../services/ai_service.dart';
 import '../models/expense.dart';
 import '../providers/expense_provider.dart';
 import '../utils/formatters.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class AddExpenseScreen extends StatefulWidget {
   final Expense? expenseToEdit;
@@ -19,34 +17,22 @@ class AddExpenseScreen extends StatefulWidget {
 }
 
 class _AddExpenseScreenState extends State<AddExpenseScreen> {
-  final SpeechService _speechService = SpeechService();
-
-  AIService? _aiService;
-
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _categoryController = TextEditingController();
   final _amountController = TextEditingController();
   final _dateController = TextEditingController();
+  final List<String> _categorysSelected = [];
 
   DateTime _selectedDate = DateTime.now();
 
-  String textToShow = "Presiona el micrófono para hablar...";
-  String? _recognizedTextAI;
-  bool _isListening = false;
-  bool _isProcessing = false;
-  double _cardBottomPosition = 0.0;
-  bool _isCardVisible = true;
-
-  String? alertMessage;
+  List<String> _categories = [];
 
   @override
   void initState() {
     super.initState();
-    _initSpeech();
     if (widget.expenseToEdit != null) {
       _nameController.text = widget.expenseToEdit!.name;
-      _categoryController.text = widget.expenseToEdit!.category;
+      _categorysSelected.addAll(widget.expenseToEdit!.category);
       _selectedDate = widget.expenseToEdit!.date;
       _amountController.text = NumberFormat.decimalPattern(
         'en_US',
@@ -55,83 +41,48 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     _dateController.text = DateFormat('dd/MM/yyyy').format(_selectedDate);
   }
 
-  void _initSpeech() async {
-    await _speechService.init();
-    final prefs = await SharedPreferences.getInstance();
-    final apiKey = prefs.getString('gemini_api_key');
-    if (apiKey != null) {
-      _aiService = AIService(apiKey);
-    }
-    setState(() {});
-  }
-
-  void _startRecording() async {
-    setState(() {
-      _isListening = true;
-      _recognizedTextAI = "";
-      _isCardVisible = true;
-    });
-    await _speechService.startListening((text) {
-      _recognizedTextAI = text;
-    });
-  }
-
-  void _stopRecording() async {
-    if (_isListening) {
-      await _speechService.stopListening();
-      await Future.delayed(const Duration(seconds: 1));
-      setState(() {
-        _isListening = false;
-        textToShow = _recognizedTextAI!;
-      });
-    }
-  }
-
-  void _processWithAI() async {
-    if (_isListening) return;
-
-    if (_recognizedTextAI == null || _recognizedTextAI!.isEmpty) {
-      setState(() {
-        alertMessage = "Por favor graba o escribe algo primero.";
-      });
-      return;
-    }
-
-    setState(() {
-      _isProcessing = true;
-    });
-
-    if (_aiService == null) {
-      setState(() {
-        _isProcessing = false;
-        alertMessage = "API Key no configurada. Ve a configuración.";
-      });
-      return;
-    }
-
-    final expense = await _aiService!.parseExpenseFromText(_recognizedTextAI!);
-
-    setState(() {
-      _isProcessing = false;
-    });
-
-    if (!mounted) return;
-
-    if (expense != null) {
-      _nameController.text = expense.name;
-      _categoryController.text = expense.category;
-      _amountController.text = NumberFormat.decimalPattern(
-        'en_US',
-      ).format(expense.amount);
-
-      setState(() {
-        alertMessage = "Datos extraídos con éxito!";
-      });
-    } else {
-      setState(() {
-        alertMessage = "Error al procesar con IA. Verifica tu API Key.";
-      });
-    }
+  void _showAddCategoryDialog() {
+    final TextEditingController newCategoryController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Nueva etiqueta'),
+          content: TextField(
+            controller: newCategoryController,
+            decoration: const InputDecoration(
+              hintText: 'Nombre de la etiqueta',
+            ),
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final newCategory = newCategoryController.text
+                    .trim()
+                    .toLowerCase();
+                if (newCategory.isNotEmpty) {
+                  setState(() {
+                    if (!_categories.contains(newCategory)) {
+                      _categories.add(newCategory);
+                    }
+                    if (!_categorysSelected.contains(newCategory)) {
+                      _categorysSelected.add(newCategory);
+                    }
+                  });
+                  Navigator.pop(context);
+                }
+              },
+              child: const Text('Agregar'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _saveExpense() {
@@ -141,7 +92,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       final expense = Expense(
         id: widget.expenseToEdit?.id,
         name: _nameController.text,
-        category: _categoryController.text,
+        category: _categorysSelected,
         amount: double.parse(amountText),
         date: _selectedDate,
       );
@@ -178,6 +129,15 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final providerCategories = Provider.of<ExpenseProvider>(
+      context,
+      listen: true,
+    ).categories;
+
+    // Merge provider categories with locally selected ones to ensure new ones show up
+    _categories = {...providerCategories, ..._categorysSelected}.toList()
+      ..sort();
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -187,200 +147,82 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       body: Column(
         children: [
           Expanded(
-            child: Stack(
-              children: [
-                SingleChildScrollView(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Form Fields
-                        TextFormField(
-                          controller: _nameController,
-                          decoration: const InputDecoration(
-                            labelText: 'Nombre del Producto',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.shopping_bag),
-                          ),
-                          validator: (value) =>
-                              value!.isEmpty ? 'Requerido' : null,
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _categoryController,
-                          decoration: const InputDecoration(
-                            labelText: 'Categoría',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.category),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _amountController,
-                          decoration: const InputDecoration(
-                            labelText: 'Valor',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.attach_money),
-                          ),
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                            ThousandsSeparatorInputFormatter(),
-                          ],
-                          validator: (value) =>
-                              value!.isEmpty ? 'Requerido' : null,
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _dateController,
-                          readOnly: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Fecha',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.calendar_today),
-                          ),
-                          onTap: _selectDate,
-                        ),
-                        const SizedBox(height: 16),
-                      ],
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Form Fields
+                    TextFormField(
+                      controller: _nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Nombre del Producto',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.shopping_bag),
+                      ),
+                      validator: (value) => value!.isEmpty ? 'Requerido' : null,
                     ),
-                  ),
-                ),
-
-                if (_isCardVisible)
-                  Positioned(
-                    bottom: _cardBottomPosition,
-                    left: 16,
-                    right: 16,
-                    child: GestureDetector(
-                      onVerticalDragUpdate: (details) {
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _amountController,
+                      decoration: const InputDecoration(
+                        labelText: 'Valor',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.attach_money),
+                      ),
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        ThousandsSeparatorInputFormatter(),
+                      ],
+                      validator: (value) => value!.isEmpty ? 'Requerido' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _dateController,
+                      readOnly: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Fecha',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.calendar_today),
+                      ),
+                      onTap: _selectDate,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      "Categoria",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    CustomChipBar(
+                      values: _categories,
+                      selectedValues: _categorysSelected,
+                      onSelected: (value) {
                         setState(() {
-                          _cardBottomPosition -= details.delta.dy;
-                          // Clamp to screen bounds (approximate)
-                          if (_cardBottomPosition < 0) _cardBottomPosition = 0;
-                          if (_cardBottomPosition >
-                              MediaQuery.of(context).size.height - 300) {
-                            _cardBottomPosition =
-                                MediaQuery.of(context).size.height - 300;
+                          if (_categorysSelected.contains(value)) {
+                            _categorysSelected.remove(value);
+                          } else {
+                            _categorysSelected.add(value);
                           }
                         });
                       },
-                      child: Card(
-                        color: Colors.grey[100],
-                        child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                if (alertMessage != null)
-                                  Expanded(
-                                    child: Center(child: Text(alertMessage!)),
-                                  ),
-                                IconButton(
-                                  icon: const Icon(Icons.close, size: 20),
-                                  onPressed: () {
-                                    setState(() {
-                                      _isCardVisible = false;
-                                    });
-                                  },
-                                ),
-                              ],
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                right: 16.0,
-                                left: 16.0,
-                                bottom: 16.0,
-                              ),
-                              child: Text(
-                                textToShow,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.black,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      onAdd: _showAddCategoryDialog,
                     ),
-                  ),
-              ],
+                  ],
+                ),
+              ),
             ),
           ),
         ],
       ),
-
-      bottomNavigationBar: Container(
-        height: 180,
-        padding: const EdgeInsets.only(bottom: 50),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // Bottom Left: Voice Record
-            GestureDetector(
-              onTapDown: (_) => _startRecording(),
-              onTapUp: (_) => _stopRecording(),
-              onTapCancel: () => _stopRecording(),
-              child: CircleAvatar(
-                radius: 50,
-                backgroundColor: _isListening
-                    ? Colors.red
-                    : Theme.of(context).colorScheme.primary,
-                child: Icon(
-                  _isListening ? Icons.mic : Icons.mic_none,
-                  color: Colors.white,
-                  size: 30,
-                ),
-              ),
-            ),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    // Bottom Left: Voice Record
-
-                    // Top Button: Save
-                    CircleAvatar(
-                      radius: 30,
-                      backgroundColor: Theme.of(context).colorScheme.secondary,
-                      child: IconButton(
-                        onPressed: _saveExpense,
-                        icon: const Icon(Icons.save, color: Colors.white),
-                      ),
-                    ),
-                    const SizedBox(width: 40),
-                    // Bottom Right: AI Process
-                    _isProcessing
-                        ? CircleAvatar(
-                            radius: 30,
-                            child: CircularProgressIndicator(
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          )
-                        : CircleAvatar(
-                            radius: 30,
-                            backgroundColor: Colors.purple,
-                            child: IconButton(
-                              onPressed: _processWithAI,
-                              icon: const Icon(
-                                Icons.auto_awesome,
-                                color: Colors.white,
-                                size: 30,
-                              ),
-                            ),
-                          ),
-                  ],
-                ),
-              ],
-            ),
-          ],
-        ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _saveExpense,
+        child: const Icon(Icons.save),
       ),
     );
   }

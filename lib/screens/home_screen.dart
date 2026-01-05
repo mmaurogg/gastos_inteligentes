@@ -219,12 +219,33 @@ class _HomeScreenState extends State<HomeScreen> {
                               color: Colors.white,
                             ),
                           ),
-                          onDismissed: (direction) {
-                            if (isExpense) {
-                              expenseProvider.deleteExpense(id!);
-                            } else {
-                              incomeProvider.deleteIncome(id!);
-                            }
+                          confirmDismiss: (direction) {
+                            return showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Confirmar eliminación'),
+                                content: Text(
+                                  '¿Estás seguro de eliminar este movimiento?',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('Cancelar'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      if (isExpense) {
+                                        expenseProvider.deleteExpense(id!);
+                                      } else {
+                                        incomeProvider.deleteIncome(id!);
+                                      }
+                                      Navigator.pop(context);
+                                    },
+                                    child: const Text('Eliminar'),
+                                  ),
+                                ],
+                              ),
+                            );
                           },
                           child: ListTile(
                             onTap: () {
@@ -245,9 +266,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                       context,
                                     ).colorScheme.primaryContainer
                                   : Colors.green[100],
-                              child: category.isNotEmpty
+                              child: (category as List).isNotEmpty
                                   ? Text(
-                                      category[0].toUpperCase(),
+                                      (category as List)[0][0].toUpperCase(),
                                       style: TextStyle(
                                         color: isExpense
                                             ? Theme.of(
