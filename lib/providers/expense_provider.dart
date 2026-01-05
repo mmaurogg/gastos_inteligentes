@@ -72,4 +72,23 @@ class ExpenseProvider with ChangeNotifier {
     await _dbHelper.deleteExpense(id);
     await loadExpenses();
   }
+
+  Future<void> renameCategory(String oldName, String newName) async {
+    for (var expense in _expenses) {
+      if (expense.category.contains(oldName)) {
+        final newCategories = expense.category
+            .map((c) => c == oldName ? newName : c)
+            .toList();
+        final updatedExpense = Expense(
+          id: expense.id,
+          name: expense.name,
+          category: newCategories,
+          amount: expense.amount,
+          date: expense.date,
+        );
+        await _dbHelper.updateExpense(updatedExpense);
+      }
+    }
+    await loadExpenses();
+  }
 }

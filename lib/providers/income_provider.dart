@@ -71,4 +71,23 @@ class IncomeProvider with ChangeNotifier {
     await _dbHelper.deleteIncome(id);
     await loadIncomes();
   }
+
+  Future<void> renameCategory(String oldName, String newName) async {
+    for (var income in _incomes) {
+      if (income.category.contains(oldName)) {
+        final newCategories = income.category
+            .map((c) => c == oldName ? newName : c)
+            .toList();
+        final updatedIncome = Income(
+          id: income.id,
+          name: income.name,
+          category: newCategories,
+          amount: income.amount,
+          date: income.date,
+        );
+        await _dbHelper.updateIncome(updatedIncome);
+      }
+    }
+    await loadIncomes();
+  }
 }

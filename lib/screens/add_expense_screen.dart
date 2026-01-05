@@ -85,6 +85,50 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     );
   }
 
+  void _showRenameCategoryDialog(String oldName) {
+    final TextEditingController renameController = TextEditingController(
+      text: oldName,
+    );
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Renombrar etiqueta'),
+          content: TextField(
+            controller: renameController,
+            decoration: const InputDecoration(hintText: 'Nuevo nombre'),
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final newName = renameController.text.trim().toLowerCase();
+                if (newName.isNotEmpty && newName != oldName) {
+                  Provider.of<ExpenseProvider>(
+                    context,
+                    listen: false,
+                  ).renameCategory(oldName, newName);
+                  setState(() {
+                    if (_categorysSelected.contains(oldName)) {
+                      _categorysSelected.remove(oldName);
+                      _categorysSelected.add(newName);
+                    }
+                  });
+                  Navigator.pop(context);
+                }
+              },
+              child: const Text('Renombrar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _saveExpense() {
     if (_categorysSelected.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -198,15 +242,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                       onTap: _selectDate,
                     ),
                     const SizedBox(height: 16),
-                    const Text(
-                      "Categoria",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
                     CustomChipBar(
+                      title: "Categoria",
                       values: _categories,
                       selectedValues: _categorysSelected,
                       onSelected: (value) {
@@ -218,6 +255,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                           }
                         });
                       },
+                      onLongPress: _showRenameCategoryDialog,
                       onAdd: _showAddCategoryDialog,
                     ),
                   ],
