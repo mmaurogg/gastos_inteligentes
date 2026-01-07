@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/expense.dart';
 import '../db/database_helper.dart';
+
+final expenseProvider = ChangeNotifierProvider((ref) => ExpenseProvider());
 
 class ExpenseProvider with ChangeNotifier {
   List<Expense> _expenses = [];

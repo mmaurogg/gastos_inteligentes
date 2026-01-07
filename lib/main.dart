@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'providers/expense_provider.dart';
-import 'providers/income_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/api_key_screen.dart';
 
@@ -10,7 +8,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
   final hasApiKey = prefs.containsKey('gemini_api_key');
-  runApp(MyApp(hasApiKey: hasApiKey));
+  runApp(ProviderScope(child: MyApp(hasApiKey: hasApiKey)));
 }
 
 class MyApp extends StatelessWidget {
@@ -19,19 +17,13 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => ExpenseProvider()),
-        ChangeNotifierProvider(create: (_) => IncomeProvider()),
-      ],
-      child: MaterialApp(
-        title: 'Gastos Inteligentes',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-          useMaterial3: true,
-        ),
-        home: hasApiKey ? const HomeScreen() : const ApiKeyScreen(),
+    return MaterialApp(
+      title: 'Gastos Inteligentes',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
       ),
+      home: hasApiKey ? const HomeScreen() : const ApiKeyScreen(),
     );
   }
 }

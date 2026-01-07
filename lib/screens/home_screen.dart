@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gastos_inteligentes/screens/widgets/expandible_button.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../providers/expense_provider.dart';
 import '../providers/income_provider.dart';
@@ -12,22 +12,22 @@ import 'permissions_screen.dart';
 import 'api_key_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
     // Load expenses when the screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        Provider.of<ExpenseProvider>(context, listen: false).loadExpenses();
-        Provider.of<IncomeProvider>(context, listen: false).loadIncomes();
+        ref.read(expenseProvider).loadExpenses();
+        ref.read(incomeProvider).loadIncomes();
       }
     });
   }
@@ -49,14 +49,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _selectedDateRange = picked;
       });
       if (mounted) {
-        Provider.of<ExpenseProvider>(
-          context,
-          listen: false,
-        ).setDateRange(picked);
-        Provider.of<IncomeProvider>(
-          context,
-          listen: false,
-        ).setDateRange(picked);
+        ref.read(expenseProvider).setDateRange(picked);
+        ref.read(incomeProvider).setDateRange(picked);
       }
     }
   }
@@ -66,21 +60,11 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedDateRange = null;
     });
     if (mounted) {
-      final expenseProvider = Provider.of<ExpenseProvider>(
-        context,
-        listen: false,
-      );
-      final incomeProvider = Provider.of<IncomeProvider>(
-        context,
-        listen: false,
-      );
+      final expenseProv = ref.read(expenseProvider);
+      final incomeProv = ref.read(incomeProvider);
 
-      expenseProvider.setDateRange(null);
-      incomeProvider.setDateRange(null);
-
-      // Also clear category when clearing filters?
-      // Or maybe keep them separate. Let's keep them separate for now but
-      // provide a way to clear category.
+      expenseProv.setDateRange(null);
+      incomeProv.setDateRange(null);
     }
   }
 
@@ -138,16 +122,18 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: Consumer2<ExpenseProvider, IncomeProvider>(
-        builder: (context, expenseProvider, incomeProvider, child) {
+      body: Consumer(
+        builder: (context, ref, child) {
+          final expenseProv = ref.watch(expenseProvider);
+          final incomeProv = ref.watch(incomeProvider);
           return Column(
             children: [
               _buildFilterBar(),
-              _buildCategoryFilter(expenseProvider, incomeProvider),
+              _buildCategoryFilter(expenseProv, incomeProv),
 
               _buildDashboardHeader(
-                expenseProvider.totalExpenses,
-                incomeProvider.totalIncomes,
+                expenseProv.totalExpenses,
+                incomeProv.totalIncomes,
               ),
 
               Expanded(
@@ -155,13 +141,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   builder: (context) {
                     List<dynamic> transactions = [];
                     if (_currentViewFilter == 'income') {
-                      transactions = incomeProvider.incomes;
+                      transactions = incomeProv.incomes;
                     } else if (_currentViewFilter == 'expense') {
-                      transactions = expenseProvider.expenses;
+                      transactions = expenseProv.expenses;
                     } else {
                       transactions = [
-                        ...expenseProvider.expenses,
-                        ...incomeProvider.incomes,
+                        ...expenseProv.expenses,
+                        ...incomeProv.incomes,
                       ];
                     }
 
@@ -235,9 +221,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                   TextButton(
                                     onPressed: () {
                                       if (isExpense) {
-                                        expenseProvider.deleteExpense(id!);
+                                        expenseProv.deleteExpense(id!);
                                       } else {
-                                        incomeProvider.deleteIncome(id!);
+                                        incomeProv.deleteIncome(id!);
                                       }
                                       Navigator.pop(context);
                                     },

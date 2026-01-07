@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:gastos_inteligentes/screens/widgets/custom_chip_bar.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../models/expense.dart';
 import '../providers/expense_provider.dart';
 import '../utils/formatters.dart';
 import 'package:flutter/services.dart';
 
-class AddExpenseScreen extends StatefulWidget {
+class AddExpenseScreen extends ConsumerStatefulWidget {
   final Expense? expenseToEdit;
 
   const AddExpenseScreen({super.key, this.expenseToEdit});
 
   @override
-  State<AddExpenseScreen> createState() => _AddExpenseScreenState();
+  ConsumerState<AddExpenseScreen> createState() => _AddExpenseScreenState();
 }
 
-class _AddExpenseScreenState extends State<AddExpenseScreen> {
+class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _amountController = TextEditingController();
@@ -108,10 +108,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               onPressed: () {
                 final newName = renameController.text.trim().toLowerCase();
                 if (newName.isNotEmpty && newName != oldName) {
-                  Provider.of<ExpenseProvider>(
-                    context,
-                    listen: false,
-                  ).renameCategory(oldName, newName);
+                  ref.read(expenseProvider).renameCategory(oldName, newName);
                   setState(() {
                     if (_categorysSelected.contains(oldName)) {
                       _categorysSelected.remove(oldName);
@@ -149,15 +146,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       );
 
       if (widget.expenseToEdit != null) {
-        Provider.of<ExpenseProvider>(
-          context,
-          listen: false,
-        ).updateExpense(expense);
+        ref.read(expenseProvider).updateExpense(expense);
       } else {
-        Provider.of<ExpenseProvider>(
-          context,
-          listen: false,
-        ).addExpense(expense);
+        ref.read(expenseProvider).addExpense(expense);
       }
       Navigator.pop(context);
     }
@@ -180,10 +171,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final providerCategories = Provider.of<ExpenseProvider>(
-      context,
-      listen: true,
-    ).categories;
+    final providerCategories = ref.watch(expenseProvider).categories;
 
     // Merge provider categories with locally selected ones to ensure new ones show up
     _categories = {...providerCategories, ..._categorysSelected}.toList()

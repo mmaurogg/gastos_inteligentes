@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/income.dart';
 import '../db/database_helper.dart';
+
+final incomeProvider = ChangeNotifierProvider((ref) => IncomeProvider());
 
 class IncomeProvider with ChangeNotifier {
   List<Income> _incomes = [];

@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:gastos_inteligentes/screens/widgets/custom_chip_bar.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../models/income.dart';
 import '../providers/income_provider.dart';
 import '../utils/formatters.dart';
 import 'package:flutter/services.dart';
 
-class AddIncomeScreen extends StatefulWidget {
+class AddIncomeScreen extends ConsumerStatefulWidget {
   final Income? incomeToEdit;
 
   const AddIncomeScreen({super.key, this.incomeToEdit});
 
   @override
-  State<AddIncomeScreen> createState() => _AddIncomeScreenState();
+  ConsumerState<AddIncomeScreen> createState() => _AddIncomeScreenState();
 }
 
-class _AddIncomeScreenState extends State<AddIncomeScreen> {
+class _AddIncomeScreenState extends ConsumerState<AddIncomeScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _amountController = TextEditingController();
@@ -106,10 +106,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
               onPressed: () {
                 final newName = renameController.text.trim().toLowerCase();
                 if (newName.isNotEmpty && newName != oldName) {
-                  Provider.of<IncomeProvider>(
-                    context,
-                    listen: false,
-                  ).renameCategory(oldName, newName);
+                  ref.read(incomeProvider).renameCategory(oldName, newName);
                   setState(() {
                     if (_categorysSelected.contains(oldName)) {
                       _categorysSelected.remove(oldName);
@@ -147,12 +144,9 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
       );
 
       if (widget.incomeToEdit != null) {
-        Provider.of<IncomeProvider>(
-          context,
-          listen: false,
-        ).updateIncome(income);
+        ref.read(incomeProvider).updateIncome(income);
       } else {
-        Provider.of<IncomeProvider>(context, listen: false).addIncome(income);
+        ref.read(incomeProvider).addIncome(income);
       }
       Navigator.pop(context);
     }
@@ -175,10 +169,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final providerCategories = Provider.of<IncomeProvider>(
-      context,
-      listen: true,
-    ).categories;
+    final providerCategories = ref.watch(incomeProvider).categories;
 
     // Merge provider categories with locally selected ones to ensure new ones show up
     _categories = {...providerCategories, ..._categorysSelected}.toList()
