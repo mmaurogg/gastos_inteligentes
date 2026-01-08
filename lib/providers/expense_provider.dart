@@ -57,7 +57,6 @@ class ExpenseProvider with ChangeNotifier {
 
   Future<void> loadExpenses() async {
     _expenses = await _dbHelper.getExpenses();
-    // _totalExpenses is now calculated dynamically based on the filtered list
     notifyListeners();
   }
 

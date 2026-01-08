@@ -6,8 +6,9 @@ import '../db/database_helper.dart';
 final incomeProvider = ChangeNotifierProvider((ref) => IncomeProvider());
 
 class IncomeProvider with ChangeNotifier {
-  List<Income> _incomes = [];
   final DatabaseHelper _dbHelper = DatabaseHelper();
+
+  List<Income> _incomes = [];
 
   DateTimeRange? _selectedDateRange;
   String? _selectedCategory;

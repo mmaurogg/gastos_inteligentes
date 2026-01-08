@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gastos_inteligentes/screens/widgets/balance_header.dart';
 import 'package:gastos_inteligentes/screens/widgets/expandible_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -9,7 +10,6 @@ import '../models/income.dart';
 import 'add_expense_screen.dart';
 import 'add_income_screen.dart';
 import 'permissions_screen.dart';
-import 'api_key_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -23,9 +23,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    // Set initial date range to current month
+    final now = DateTime.now();
+    _selectedDateRange = DateTimeRange(
+      start: DateTime(now.year, now.month, 1),
+      end: DateTime(now.year, now.month + 1, 0),
+    );
+
     // Load expenses when the screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
+        ref.read(expenseProvider).setDateRange(_selectedDateRange);
+        ref.read(incomeProvider).setDateRange(_selectedDateRange);
         ref.read(expenseProvider).loadExpenses();
         ref.read(incomeProvider).loadIncomes();
       }
@@ -55,6 +64,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
+  void _loadPreviousMonth() {
+    if (_selectedDateRange == null) return;
+
+    final currentStart = _selectedDateRange!.start;
+    final newStart = DateTime(currentStart.year, currentStart.month - 1, 1);
+    final newRange = DateTimeRange(
+      start: newStart,
+      end: _selectedDateRange!.end,
+    );
+
+    setState(() {
+      _selectedDateRange = newRange;
+    });
+
+    if (mounted) {
+      ref.read(expenseProvider).setDateRange(newRange);
+      ref.read(incomeProvider).setDateRange(newRange);
+    }
+  }
+
+  void _filterByMonthString(String monthStr) {
+    try {
+      final date = DateFormat('MMMM yyyy').parse(monthStr);
+      final range = DateTimeRange(
+        start: DateTime(date.year, date.month, 1),
+        end: DateTime(date.year, date.month + 1, 0),
+      );
+      setState(() {
+        _selectedDateRange = range;
+      });
+      if (mounted) {
+        ref.read(expenseProvider).setDateRange(range);
+        ref.read(incomeProvider).setDateRange(range);
+      }
+    } catch (e) {
+      // Ignore parse errors
+    }
+  }
+
   void _clearDateRange() {
     setState(() {
       _selectedDateRange = null;
@@ -72,10 +120,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('gemini_api_key');
     if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
+    /*  Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (context) => const ApiKeyScreen()),
       (route) => false,
-    );
+    ); */
   }
 
   List<dynamic> _groupTransactionsByMonth(List<dynamic> transactions) {
@@ -100,10 +148,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Control de Gastos IA'),
+        centerTitle: true,
+        title: const Text('Control de Gastos'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
-          IconButton(
+          /* IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
               Navigator.push(
@@ -119,7 +168,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             icon: const Icon(Icons.logout),
             onPressed: _logout,
             tooltip: 'Cerrar Sesión',
-          ),
+          ), */
         ],
       ),
       body: Consumer(
@@ -128,13 +177,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           final incomeProv = ref.watch(incomeProvider);
           return Column(
             children: [
-              _buildFilterBar(),
-              _buildCategoryFilter(expenseProv, incomeProv),
+              BalanceHeader(),
 
-              _buildDashboardHeader(
-                expenseProv.totalExpenses,
-                incomeProv.totalIncomes,
-              ),
+              _buildCategoryFilter(expenseProv, incomeProv),
+              _buildFilterBar(),
 
               Expanded(
                 child: Builder(
@@ -162,18 +208,77 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     );
 
                     return ListView.builder(
-                      itemCount: groupedTransactions.length,
+                      itemCount: groupedTransactions.length + 1,
                       itemBuilder: (context, index) {
+                        if (index == groupedTransactions.length) {
+                          final now = DateTime.now();
+                          final currentMonthEnd = DateTime(
+                            now.year,
+                            now.month + 1,
+                            0,
+                          );
+                          final isExpandingMode =
+                              _selectedDateRange != null &&
+                              _selectedDateRange!.end.year ==
+                                  currentMonthEnd.year &&
+                              _selectedDateRange!.end.month ==
+                                  currentMonthEnd.month &&
+                              _selectedDateRange!.end.day ==
+                                  currentMonthEnd.day;
+
+                          if (!isExpandingMode) {
+                            return const SizedBox.shrink();
+                          }
+
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 24.0,
+                              horizontal: 16.0,
+                            ),
+                            child: OutlinedButton.icon(
+                              onPressed: _loadPreviousMonth,
+                              icon: const Icon(Icons.history),
+                              label: const Text('Cargar mes anterior'),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+
                         final item = groupedTransactions[index];
                         if (item is String) {
-                          return Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                            child: Text(
-                              item.toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.primary,
+                          return InkWell(
+                            onTap: () => _filterByMonthString(item),
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    item.toUpperCase(),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                    ),
+                                  ),
+                                  Icon(
+                                    Icons.filter_list,
+                                    size: 16,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                  ),
+                                ],
                               ),
                             ),
                           );
@@ -332,140 +437,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: const Icon(Icons.wallet, color: Colors.white),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildDashboardHeader(double totalExpenses, double totalIncomes) {
-    final balance = totalIncomes - totalExpenses;
-    return Card(
-      margin: const EdgeInsets.all(16.0),
-      elevation: 4,
-      color: Theme.of(context).colorScheme.primaryContainer,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            InkWell(
-              onTap: () => setState(() => _currentViewFilter = 'income'),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 4.0),
-                decoration: BoxDecoration(
-                  color: _currentViewFilter == 'income'
-                      ? Colors.green.withOpacity(0.1)
-                      : null,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Ingresos:',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Text(
-                      NumberFormat.currency(
-                        locale: 'en_US',
-                        symbol: '\$',
-                        decimalDigits: 0,
-                      ).format(totalIncomes),
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4.0),
-              child: const Divider(),
-            ),
-            InkWell(
-              onTap: () => setState(() => _currentViewFilter = 'expense'),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 4.0),
-                decoration: BoxDecoration(
-                  color: _currentViewFilter == 'expense'
-                      ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
-                      : null,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Gastos:',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Text(
-                      NumberFormat.currency(
-                        locale: 'en_US',
-                        symbol: '\$',
-                        decimalDigits: 0,
-                      ).format(totalExpenses),
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4.0),
-              child: const Divider(),
-            ),
-            InkWell(
-              onTap: () => setState(() => _currentViewFilter = 'balance'),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 4.0),
-                decoration: BoxDecoration(
-                  color: _currentViewFilter == 'balance'
-                      ? Colors.blue.withOpacity(0.1)
-                      : null,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Balance:',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      NumberFormat.currency(
-                        locale: 'en_US',
-                        symbol: '\$',
-                        decimalDigits: 0,
-                      ).format(balance),
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: balance >= 0
-                            ? Theme.of(context).colorScheme.primary
-                            : Colors.red,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

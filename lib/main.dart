@@ -1,29 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:gastos_inteligentes/config/app_theme.dart';
 import 'screens/home_screen.dart';
-import 'screens/api_key_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final prefs = await SharedPreferences.getInstance();
-  final hasApiKey = prefs.containsKey('gemini_api_key');
-  runApp(ProviderScope(child: MyApp(hasApiKey: hasApiKey)));
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {
-  final bool hasApiKey;
-  const MyApp({super.key, required this.hasApiKey});
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Gastos Inteligentes',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: AppTheme().themeApp.colorScheme,
         useMaterial3: true,
       ),
-      home: hasApiKey ? const HomeScreen() : const ApiKeyScreen(),
+      home: const HomeScreen(),
     );
   }
 }
