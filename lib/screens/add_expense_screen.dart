@@ -3,7 +3,9 @@ import 'package:gastos_inteligentes/screens/widgets/custom_chip_bar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../models/expense.dart';
+import '../models/debt.dart';
 import '../providers/expense_provider.dart';
+import '../providers/debt_provider.dart';
 import '../utils/formatters.dart';
 import 'package:flutter/services.dart';
 
@@ -24,6 +26,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   final List<String> _categorysSelected = [];
 
   DateTime _selectedDate = DateTime.now();
+  bool _isCredit = false;
+  DateTime _dueDate = DateTime.now().add(const Duration(days: 30));
 
   List<String> _categories = [];
 
@@ -126,7 +130,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     );
   }
 
-  void _saveExpense() {
+  void _saveExpense() async {
     if (_categorysSelected.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Selecciona al menos una etiqueta')),
@@ -137,20 +141,37 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     if (_formKey.currentState!.validate()) {
       // Remove commas before parsing
       final amountText = _amountController.text.replaceAll(',', '');
+      final amount = double.parse(amountText);
       final expense = Expense(
         id: widget.expenseToEdit?.id,
         name: _nameController.text,
         category: _categorysSelected,
-        amount: double.parse(amountText),
+        amount: amount,
         date: _selectedDate,
+        debtId: widget.expenseToEdit?.debtId,
       );
 
       if (widget.expenseToEdit != null) {
-        ref.read(expenseProvider).updateExpense(expense);
+        await ref.read(expenseProvider).updateExpense(expense);
       } else {
-        ref.read(expenseProvider).addExpense(expense);
+        final expenseId = await ref.read(expenseProvider).addExpense(expense);
+
+        if (_isCredit) {
+          final debt = Debt(
+            expenseId: expenseId,
+            originalAmount: amount,
+            paidAmount: 0,
+            interestAmount: 0,
+            createdAt: _selectedDate,
+            dueDate: _dueDate,
+            status: DebtStatus.pending,
+          );
+          await ref.read(debtProvider).addDebt(debt);
+
+          print("Deuda agregada: $debt");
+        }
       }
-      Navigator.pop(context);
+      if (mounted) Navigator.pop(context);
     }
   }
 
@@ -165,6 +186,20 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       setState(() {
         _selectedDate = picked;
         _dateController.text = DateFormat('dd/MM/yyyy').format(_selectedDate);
+      });
+    }
+  }
+
+  Future<void> _selectDueDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _dueDate,
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2101),
+    );
+    if (picked != null && picked != _dueDate) {
+      setState(() {
+        _dueDate = picked;
       });
     }
   }
@@ -246,6 +281,28 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                       onLongPress: _showRenameCategoryDialog,
                       onAdd: _showAddCategoryDialog,
                     ),
+                    const SizedBox(height: 16),
+                    SwitchListTile(
+                      title: const Text('Pagar con Crédito'),
+                      subtitle: const Text('Crea una deuda automáticamente'),
+                      value: _isCredit,
+                      onChanged: (value) {
+                        setState(() {
+                          _isCredit = value;
+                        });
+                      },
+                      secondary: const Icon(Icons.credit_card),
+                    ),
+                    if (_isCredit)
+                      ListTile(
+                        title: const Text('Fecha de Vencimiento'),
+                        subtitle: Text(
+                          DateFormat('dd/MM/yyyy').format(_dueDate),
+                        ),
+                        leading: const Icon(Icons.event_available),
+                        onTap: _selectDueDate,
+                        trailing: const Icon(Icons.edit),
+                      ),
                   ],
                 ),
               ),

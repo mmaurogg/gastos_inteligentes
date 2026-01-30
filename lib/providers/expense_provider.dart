@@ -60,9 +60,10 @@ class ExpenseProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addExpense(Expense expense) async {
-    await _dbHelper.insertExpense(expense);
+  Future<int> addExpense(Expense expense) async {
+    final id = await _dbHelper.insertExpense(expense);
     await loadExpenses();
+    return id;
   }
 
   Future<void> updateExpense(Expense expense) async {
@@ -87,6 +88,7 @@ class ExpenseProvider with ChangeNotifier {
           category: newCategories,
           amount: expense.amount,
           date: expense.date,
+          debtId: expense.debtId,
         );
         await _dbHelper.updateExpense(updatedExpense);
       }

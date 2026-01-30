@@ -9,7 +9,6 @@ import '../models/expense.dart';
 import '../models/income.dart';
 import 'add_expense_screen.dart';
 import 'add_income_screen.dart';
-import 'permissions_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -284,20 +283,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           );
                         }
 
+                        final id = item.id;
+                        final name = item.name;
+                        final category = item.category;
+                        final date = item.date;
+                        final amount = item.amount;
                         final isExpense = item is Expense;
-                        final id = isExpense ? item.id : (item as Income).id;
-                        final name = isExpense
-                            ? item.name
-                            : (item as Income).name;
-                        final category = isExpense
-                            ? item.category
-                            : (item as Income).category;
-                        final date = isExpense
-                            ? item.date
-                            : (item as Income).date;
-                        final amount = isExpense
-                            ? item.amount
-                            : (item as Income).amount;
 
                         return Dismissible(
                           key: Key('${isExpense ? 'exp' : 'inc'}_$id'),
