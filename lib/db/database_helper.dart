@@ -159,4 +159,31 @@ class DatabaseHelper {
     }
     return 0.0;
   }
+
+  // Backup & Restore Methods
+  Future<List<Map<String, dynamic>>> getTableData(String table) async {
+    Database db = await database;
+    return await db.query(table);
+  }
+
+  Future<void> clearTable(String table) async {
+    Database db = await database;
+    await db.delete(table);
+  }
+
+  Future<int> insertMap(String table, Map<String, dynamic> data) async {
+    Database db = await database;
+    return await db.insert(
+      table,
+      data,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<void> closeDatabase() async {
+    if (_database != null) {
+      await _database!.close();
+      _database = null;
+    }
+  }
 }

@@ -10,6 +10,7 @@ import '../models/income.dart';
 import 'add_expense_screen.dart';
 import 'add_income_screen.dart';
 import 'permissions_screen.dart';
+import 'settings_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -152,23 +153,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         title: const Text('Control de Gastos'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
-          /* IconButton(
+          IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => const PermissionsScreen(),
-                ),
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
               );
             },
-            tooltip: 'Permisos',
+            tooltip: 'Ajustes',
           ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _logout,
-            tooltip: 'Cerrar Sesión',
-          ), */
         ],
       ),
       body: Consumer(
