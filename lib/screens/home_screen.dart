@@ -176,7 +176,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           final incomeProv = ref.watch(incomeProvider);
           return Column(
             children: [
-              BalanceHeader(),
+              BalanceHeader(
+                selectedFilter: _currentViewFilter,
+                onPressIncome: () {
+                  setState(() {
+                    _currentViewFilter = 'income';
+                  });
+                },
+                onPressExpense: () {
+                  setState(() {
+                    _currentViewFilter = 'expense';
+                  });
+                },
+                onPressBalance: () {
+                  setState(() {
+                    _currentViewFilter = 'balance';
+                  });
+                },
+              ),
 
               _buildCategoryFilter(expenseProv, incomeProv),
               _buildFilterBar(),
@@ -454,16 +471,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           Row(
             children: [
-              if (_selectedDateRange != null)
-                IconButton(
-                  icon: const Icon(Icons.filter_alt_off),
-                  onPressed: _clearDateRange,
-                  tooltip: 'Limpiar filtro',
+              TextButton.icon(
+                icon: Icon(
+                  _selectedDateRange != null
+                      ? Icons.clear
+                      : Icons.calendar_today,
                 ),
-              IconButton(
-                icon: const Icon(Icons.calendar_today),
-                onPressed: _selectDateRange,
-                tooltip: 'Filtrar por fecha',
+                label: _selectedDateRange != null
+                    ? const Text('Limpiar fecha')
+                    : const Text('Filtrar por fecha'),
+                onPressed: _selectedDateRange != null
+                    ? _clearDateRange
+                    : _selectDateRange,
               ),
             ],
           ),
