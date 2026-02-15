@@ -1,63 +1,63 @@
 enum DebtStatus { pending, partiallyPaid, paid, overdue }
 
-class Debt {
+class DebtPurchase {
   final int? id;
 
   // Relación
-  final int expenseId; // gasto que originó la deuda
+  int expenseId; // gasto que originó la deuda
+  int debtId; // deuda a la que pertenece
 
   // Montos
-  final double originalAmount; // monto total de la deuda
-  final double paidAmount; // cuánto se ha pagado
-  final double? interestRate; // tasa (mensual o por periodo)
-  final double interestAmount; // intereses generados
+  double originalAmount; // monto total de la deuda
+  double paidAmount; // cuánto se ha pagado
+  double? interestAmount; // intereses generados
 
   // Fechas
-  final DateTime createdAt; // fecha de compra
-  final DateTime dueDate; // vencimiento
-  final DateTime? paidAt; // cuando se saldó
+  DateTime createdAt; // fecha de compra
+  DateTime? dueDate; // vencimiento
+  DateTime? paidAt; // cuando se saldó
 
   // Estado
-  final DebtStatus status;
+  DebtStatus status;
 
-  const Debt({
+  DebtPurchase({
     this.id,
     required this.expenseId,
+    required this.debtId,
     required this.originalAmount,
     required this.paidAmount,
-    this.interestRate,
-    required this.interestAmount,
+    this.interestAmount,
     required this.createdAt,
-    required this.dueDate,
-    required this.status,
+    this.dueDate,
     this.paidAt,
+    required this.status,
   });
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
       'expenseId': expenseId,
+      'debtId': debtId,
       'originalAmount': originalAmount,
       'paidAmount': paidAmount,
-      'interestRate': interestRate,
       'interestAmount': interestAmount,
       'createdAt': createdAt.toIso8601String(),
-      'dueDate': dueDate.toIso8601String(),
+      'dueDate': dueDate?.toIso8601String(),
       'paidAt': paidAt?.toIso8601String(),
       'status': status.name,
     };
   }
 
-  factory Debt.fromMap(Map<String, dynamic> map) {
-    return Debt(
+  factory DebtPurchase.fromMap(Map<String, dynamic> map) {
+    return DebtPurchase(
       id: map['id'],
       expenseId: map['expenseId'],
+      debtId: map['debtId'],
       originalAmount: map['originalAmount'],
       paidAmount: map['paidAmount'],
-      interestRate: map['interestRate'],
       interestAmount: map['interestAmount'],
       createdAt: DateTime.parse(map['createdAt']),
-      dueDate: DateTime.parse(map['dueDate']),
+      dueDate: map['dueDate'] != null ? DateTime.parse(map['dueDate']) : null,
       paidAt: map['paidAt'] != null ? DateTime.parse(map['paidAt']) : null,
       status: DebtStatus.values.firstWhere(
         (e) => e.name == map['status'],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gastos_inteligentes/models/movement.dart';
 import 'package:gastos_inteligentes/screens/widgets/balance_header.dart';
 import 'package:gastos_inteligentes/screens/widgets/expandible_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -300,105 +301,109 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           );
                         }
 
-                        final id = item.id;
-                        final name = item.name;
-                        final category = item.category;
-                        final date = item.date;
-                        final amount = item.amount;
-                        final isExpense = item is Expense;
+                        if (item is Movement) {
+                          final id = item.id;
+                          final name = item.name;
+                          final category = item.category;
+                          final date = item.date;
+                          final amount = item.amount;
+                          final isExpense = item is Expense;
 
-                        return Dismissible(
-                          key: Key('${isExpense ? 'exp' : 'inc'}_$id'),
-                          background: Container(
-                            color: Colors.red,
-                            alignment: Alignment.centerRight,
-                            padding: const EdgeInsets.only(right: 20),
-                            child: const Icon(
-                              Icons.delete,
-                              color: Colors.white,
-                            ),
-                          ),
-                          confirmDismiss: (direction) {
-                            return showDialog(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: const Text('Confirmar eliminación'),
-                                content: Text(
-                                  '¿Estás seguro de eliminar este movimiento?',
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: const Text('Cancelar'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () {
-                                      if (isExpense) {
-                                        expenseProv.deleteExpense(id!);
-                                      } else {
-                                        incomeProv.deleteIncome(id!);
-                                      }
-                                      Navigator.pop(context);
-                                    },
-                                    child: const Text('Eliminar'),
-                                  ),
-                                ],
+                          return Dismissible(
+                            key: Key('${isExpense ? 'exp' : 'inc'}_$id'),
+                            background: Container(
+                              color: Colors.red,
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.only(right: 20),
+                              child: const Icon(
+                                Icons.delete,
+                                color: Colors.white,
                               ),
-                            );
-                          },
-                          child: ListTile(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => isExpense
-                                      ? AddExpenseScreen(expenseToEdit: item)
-                                      : AddIncomeScreen(
-                                          incomeToEdit: item as Income,
-                                        ),
+                            ),
+                            confirmDismiss: (direction) {
+                              return showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Confirmar eliminación'),
+                                  content: Text(
+                                    '¿Estás seguro de eliminar este movimiento?',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: const Text('Cancelar'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        if (isExpense) {
+                                          expenseProv.deleteExpense(id!);
+                                        } else {
+                                          incomeProv.deleteIncome(id!);
+                                        }
+                                        Navigator.pop(context);
+                                      },
+                                      child: const Text('Eliminar'),
+                                    ),
+                                  ],
                                 ),
                               );
                             },
-                            leading: CircleAvatar(
-                              backgroundColor: isExpense
-                                  ? Theme.of(
-                                      context,
-                                    ).colorScheme.primaryContainer
-                                  : Colors.green[100],
-                              child: (category as List).isNotEmpty
-                                  ? Text(
-                                      (category as List)[0][0].toUpperCase(),
-                                      style: TextStyle(
+                            child: ListTile(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => isExpense
+                                        ? AddExpenseScreen(expenseToEdit: item)
+                                        : AddIncomeScreen(
+                                            incomeToEdit: item as Income,
+                                          ),
+                                  ),
+                                );
+                              },
+                              leading: CircleAvatar(
+                                backgroundColor: isExpense
+                                    ? Theme.of(
+                                        context,
+                                      ).colorScheme.primaryContainer
+                                    : Colors.green[100],
+                                child: (category as List).isNotEmpty
+                                    ? Text(
+                                        (category as List)[0][0].toUpperCase(),
+                                        style: TextStyle(
+                                          color: isExpense
+                                              ? Theme.of(
+                                                  context,
+                                                ).colorScheme.primary
+                                              : Colors.green[800],
+                                        ),
+                                      )
+                                    : Icon(
+                                        Icons.category,
                                         color: isExpense
                                             ? Theme.of(
                                                 context,
                                               ).colorScheme.primary
                                             : Colors.green[800],
                                       ),
-                                    )
-                                  : Icon(
-                                      Icons.category,
-                                      color: isExpense
-                                          ? Theme.of(
-                                              context,
-                                            ).colorScheme.primary
-                                          : Colors.green[800],
-                                    ),
-                            ),
-                            title: Text(name),
-                            subtitle: Text(
-                              DateFormat('dd/MM/yyyy').format(date),
-                            ),
-                            trailing: Text(
-                              '${isExpense ? '-' : ''}${NumberFormat.currency(locale: 'en_US', symbol: '\$', decimalDigits: 0).format(amount)}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: isExpense ? Colors.red : Colors.green,
+                              ),
+                              title: Text(name),
+                              subtitle: Text(
+                                DateFormat('dd/MM/yyyy').format(date),
+                              ),
+                              trailing: Text(
+                                '${isExpense ? '-' : ''}${NumberFormat.currency(locale: 'en_US', symbol: '\$', decimalDigits: 0).format(amount)}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: isExpense ? Colors.red : Colors.green,
+                                ),
                               ),
                             ),
-                          ),
-                        );
+                          );
+                        }
+
+                        return const SizedBox.shrink();
                       },
                     );
                   },

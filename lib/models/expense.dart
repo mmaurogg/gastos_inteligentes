@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:gastos_inteligentes/models/movement.dart';
 
 class Expense extends Movement {
-  final int? debtId;
+  int? debtPurchaseId; // ojo es el debitPurchaseId
 
   Expense({
     super.id,
@@ -12,7 +12,7 @@ class Expense extends Movement {
     required super.amount,
     required super.date,
     super.type = MovementType.expense,
-    this.debtId,
+    this.debtPurchaseId,
   });
 
   @override
@@ -23,13 +23,13 @@ class Expense extends Movement {
       'category': jsonEncode(category),
       'amount': amount,
       'date': date.toIso8601String(),
-      'debtId': debtId,
+      'debtPurchaseId': debtPurchaseId,
     };
   }
 
   @override
   String toString() {
-    return 'Expense{id: $id, name: $name, category: $category, amount: $amount, date: $date, debtId: $debtId}';
+    return 'Expense{id: $id, name: $name, category: $category, amount: $amount, date: $date, debtPurchaseId: $debtPurchaseId}';
   }
 
   factory Expense.fromMap(Map<String, dynamic> map) {
@@ -54,7 +54,7 @@ class Expense extends Movement {
       category: categories,
       amount: map['amount'],
       date: DateTime.parse(map['date']),
-      debtId: map['debtId'],
+      debtPurchaseId: map['debtPurchaseId'],
     );
   }
 }

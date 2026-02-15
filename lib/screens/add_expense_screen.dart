@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:gastos_inteligentes/models/debt/debt.dart';
+import 'package:gastos_inteligentes/models/debt/debt_purchase.dart';
+import 'package:gastos_inteligentes/providers/debt_provider.dart';
+import 'package:gastos_inteligentes/screens/add_debt_screen.dart';
 import 'package:gastos_inteligentes/screens/widgets/custom_chip_bar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../models/expense.dart';
-import '../models/debt.dart';
 import '../providers/expense_provider.dart';
-import '../providers/debt_provider.dart';
 import '../utils/formatters.dart';
 import 'package:flutter/services.dart';
 
@@ -27,7 +29,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
   DateTime _selectedDate = DateTime.now();
   bool _isCredit = false;
-  DateTime _dueDate = DateTime.now().add(const Duration(days: 30));
+  Debt? _selectedDebt;
 
   List<String> _categories = [];
 
@@ -41,8 +43,23 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       _amountController.text = NumberFormat.decimalPattern(
         'en_US',
       ).format(widget.expenseToEdit!.amount);
+      _isCredit = widget.expenseToEdit!.debtPurchaseId != null;
+      if (_isCredit && widget.expenseToEdit!.debtPurchaseId != null) {
+        _loadSelectedDebt(widget.expenseToEdit!.debtPurchaseId!);
+      }
     }
     _dateController.text = DateFormat('dd/MM/yyyy').format(_selectedDate);
+  }
+
+  Future<void> _loadSelectedDebt(int debtId) async {
+    //TODO: alto consumo pero necesitamos que haya lista de deudas por que3 si no se bloquea el droopdown
+    await ref.read(debtProvider).loadDebts();
+    final debt = await ref.read(debtProvider).getDebtById(debtId);
+    if (mounted) {
+      setState(() {
+        _selectedDebt = debt;
+      });
+    }
   }
 
   void _showAddCategoryDialog() {
@@ -148,29 +165,106 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         category: _categorysSelected,
         amount: amount,
         date: _selectedDate,
-        debtId: widget.expenseToEdit?.debtId,
+        debtPurchaseId: _selectedDebt?.id,
       );
 
       if (widget.expenseToEdit != null) {
+        if (_isCredit) {
+          if (_selectedDebt?.id == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Debe seleccionar una deuda')),
+            );
+            return;
+          }
+
+          if (widget.expenseToEdit?.debtPurchaseId != null) {
+            // Caso: ya tenia credito asociado
+            var debtPurchase = await ref
+                .read(debtProvider)
+                .getDebtPurchaseById(widget.expenseToEdit!.debtPurchaseId!);
+
+            if (debtPurchase == null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('ocdurrio un error al actualizar el el gasto'),
+                ),
+              );
+              return;
+            }
+            debtPurchase.originalAmount = amount;
+            debtPurchase.debtId = _selectedDebt!.id!;
+            debtPurchase.createdAt = _selectedDate;
+
+            await ref.read(debtProvider).updateDebtPurchase(debtPurchase);
+          } else {
+            // Caso: no tenia credito asociado y se agrego despues
+            final debtPurchase = DebtPurchase(
+              expenseId: widget.expenseToEdit!.id!,
+              debtId: _selectedDebt!.id!,
+              originalAmount: amount,
+              paidAmount: 0,
+              createdAt: _selectedDate,
+              status: DebtStatus.pending,
+            );
+
+            final debtPurchaseId = await ref
+                .read(debtProvider)
+                .addDebtPurchase(debtPurchase);
+
+            expense.debtPurchaseId = debtPurchaseId;
+          }
+        } else {
+          // Caso: ya tenia credito asociado y se le quito
+          if (widget.expenseToEdit?.debtPurchaseId != null) {
+            await ref
+                .read(debtProvider)
+                .deleteDebtPurchase(widget.expenseToEdit!.debtPurchaseId!);
+          }
+          expense.debtPurchaseId = null;
+        }
+
         await ref.read(expenseProvider).updateExpense(expense);
       } else {
-        final expenseId = await ref.read(expenseProvider).addExpense(expense);
-
         if (_isCredit) {
-          final debt = Debt(
+          if (_selectedDebt?.id == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Debe seleccionar una deuda')),
+            );
+            return;
+          }
+
+          // Primer guardado para obtener el id
+          final expenseId = await ref.read(expenseProvider).addExpense(expense);
+
+          final debtPurchase = DebtPurchase(
             expenseId: expenseId,
+            debtId: _selectedDebt!.id!,
             originalAmount: amount,
             paidAmount: 0,
-            interestAmount: 0,
             createdAt: _selectedDate,
-            dueDate: _dueDate,
             status: DebtStatus.pending,
           );
-          await ref.read(debtProvider).addDebt(debt);
 
-          print("Deuda agregada: $debt");
+          final debtPurchaseId = await ref
+              .read(debtProvider)
+              .addDebtPurchase(debtPurchase);
+
+          final updatedExpense = Expense(
+            id: expenseId,
+            name: expense.name,
+            category: expense.category,
+            amount: expense.amount,
+            date: expense.date,
+            debtPurchaseId: debtPurchaseId,
+          );
+
+          // Segundo guardado para actualizar el gasto con el id de la deuda
+          await ref.read(expenseProvider).updateExpense(updatedExpense);
+        } else {
+          await ref.read(expenseProvider).addExpense(expense);
         }
       }
+
       if (mounted) Navigator.pop(context);
     }
   }
@@ -186,20 +280,6 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       setState(() {
         _selectedDate = picked;
         _dateController.text = DateFormat('dd/MM/yyyy').format(_selectedDate);
-      });
-    }
-  }
-
-  Future<void> _selectDueDate() async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _dueDate,
-      firstDate: DateTime.now(),
-      lastDate: DateTime(2101),
-    );
-    if (picked != null && picked != _dueDate) {
-      setState(() {
-        _dueDate = picked;
       });
     }
   }
@@ -282,26 +362,70 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                       onAdd: _showAddCategoryDialog,
                     ),
                     const SizedBox(height: 16),
-                    SwitchListTile(
-                      title: const Text('Pagar con Crédito'),
-                      subtitle: const Text('Crea una deuda automáticamente'),
-                      value: _isCredit,
-                      onChanged: (value) {
-                        setState(() {
-                          _isCredit = value;
-                        });
-                      },
-                      secondary: const Icon(Icons.credit_card),
+
+                    Card(
+                      child: SwitchListTile(
+                        title: const Text('Pagar con Crédito'),
+                        value: _isCredit,
+                        onChanged: (value) async {
+                          if (value) await ref.read(debtProvider).loadDebts();
+
+                          setState(() {
+                            _isCredit = value;
+                          });
+                        },
+                        secondary: const Icon(Icons.credit_card),
+                      ),
                     ),
+
+                    const SizedBox(height: 16),
+
                     if (_isCredit)
-                      ListTile(
-                        title: const Text('Fecha de Vencimiento'),
-                        subtitle: Text(
-                          DateFormat('dd/MM/yyyy').format(_dueDate),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: DropdownButtonFormField<Debt>(
+                                value: _selectedDebt,
+                                decoration: const InputDecoration(
+                                  labelText: 'seleccione un credito',
+                                  border: OutlineInputBorder(),
+                                  prefixIcon: Icon(Icons.credit_card),
+                                ),
+                                onTap: () {
+                                  if (ref.read(debtProvider).debts.isEmpty) {
+                                    ref.read(debtProvider).loadDebts();
+                                  }
+                                },
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectedDebt = value;
+                                  });
+                                },
+                                items: ref.watch(debtProvider).debts.map((
+                                  debt,
+                                ) {
+                                  return DropdownMenuItem(
+                                    value: debt,
+                                    child: Text(debt.name),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const AddDebtScreen(),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.add),
+                            ),
+                          ],
                         ),
-                        leading: const Icon(Icons.event_available),
-                        onTap: _selectDueDate,
-                        trailing: const Icon(Icons.edit),
                       ),
                   ],
                 ),

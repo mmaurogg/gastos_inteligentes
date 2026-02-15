@@ -88,7 +88,7 @@ class ExpenseProvider with ChangeNotifier {
           category: newCategories,
           amount: expense.amount,
           date: expense.date,
-          debtId: expense.debtId,
+          debtPurchaseId: expense.debtPurchaseId,
         );
         await _dbHelper.updateExpense(updatedExpense);
       }
