@@ -219,6 +219,20 @@ class DatabaseHelper {
     });
   }
 
+  Future<Expense?> getExpenseById(int id) async {
+    Database db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'expenses',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+
+    if (maps.isNotEmpty) {
+      return Expense.fromMap(maps.first);
+    }
+    return null;
+  }
+
   Future<void> deleteExpense(int id) async {
     Database db = await database;
     await db.delete('expenses', where: 'id = ?', whereArgs: [id]);
