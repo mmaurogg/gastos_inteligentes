@@ -27,7 +27,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'expenses.db');
     return await openDatabase(
       path,
-      version: 6,
+      version: 2,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
