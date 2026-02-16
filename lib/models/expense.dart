@@ -1,22 +1,21 @@
 import 'dart:convert';
 
-class Expense {
-  final int? id;
-  final String name;
-  final List<String> category;
-  final double amount;
-  final DateTime date;
+import 'package:gastos_inteligentes/models/movement.dart';
+
+class Expense extends Movement {
+  int? debtPurchaseId; // ojo es el debitPurchaseId
 
   Expense({
-    this.id,
-    required this.name,
-    required this.category,
-    required this.amount,
-    required this.date,
+    super.id,
+    required super.name,
+    required super.category,
+    required super.amount,
+    required super.date,
+    super.type = MovementType.expense,
+    this.debtPurchaseId,
   });
 
-  // Convert a Expense into a Map. The keys must correspond to the names of the
-  // columns in the database.
+  @override
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -24,14 +23,13 @@ class Expense {
       'category': jsonEncode(category),
       'amount': amount,
       'date': date.toIso8601String(),
+      'debtPurchaseId': debtPurchaseId,
     };
   }
 
-  // Implement toString to make it easier to see information about
-  // each expense when using the print statement.
   @override
   String toString() {
-    return 'Expense{id: $id, name: $name, category: $category, amount: $amount, date: $date}';
+    return 'Expense{id: $id, name: $name, category: $category, amount: $amount, date: $date, debtPurchaseId: $debtPurchaseId}';
   }
 
   factory Expense.fromMap(Map<String, dynamic> map) {
@@ -56,6 +54,7 @@ class Expense {
       category: categories,
       amount: map['amount'],
       date: DateTime.parse(map['date']),
+      debtPurchaseId: map['debtPurchaseId'],
     );
   }
 }

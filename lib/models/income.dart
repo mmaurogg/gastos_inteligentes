@@ -1,20 +1,18 @@
 import 'dart:convert';
 
-class Income {
-  final int? id;
-  final String name;
-  final List<String> category;
-  final double amount;
-  final DateTime date;
+import 'package:gastos_inteligentes/models/movement.dart';
 
+class Income extends Movement {
   Income({
-    this.id,
-    required this.name,
-    required this.category,
-    required this.amount,
-    required this.date,
+    super.id,
+    required super.name,
+    required super.category,
+    required super.amount,
+    required super.date,
+    super.type = MovementType.income,
   });
 
+  @override
   Map<String, dynamic> toMap() {
     return {
       'id': id,
