@@ -1,9 +1,4 @@
 class Debt {
-  final int? id;
-  final String name;
-  final int debtPurchase; // día de corte
-  final int paymentDay; // día límite de pago
-  final double interestRate; // mensual (ej: 0.03)
 
   Debt({
     this.id,
