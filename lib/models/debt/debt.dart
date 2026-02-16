@@ -1,13 +1,5 @@
 class Debt {
 
-  Debt({
-    this.id,
-    required this.name,
-    required this.debtPurchase,
-    required this.paymentDay,
-    required this.interestRate,
-  });
-
   Map<String, dynamic> toMap() {
     return {
       'id': id,
